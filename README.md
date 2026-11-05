@@ -25,4 +25,4 @@ Agent 會建立／確認自己的 Fork、上傳作品，並向本課程開啟 PR
 
 本課程與 Fork、PR、檔案歷史皆公開。只提交可公開的作品，不放個資、公司內部文件、密碼或 API Key。請使用 GitHub 帳號辨識，不要求真名、手機或 Email。公開可瀏覽不等於放棄著作權；轉用他人作品先確認授權。
 
-老師請看 [管理與本地測試](docs/TEACHER.md)。工具能力與官方來源整理在 [相容性說明](docs/COMPATIBILITY.md)。
+老師請看 [管理與本地測試](docs/TEACHER.md) 與 [已完成的驗證](docs/VALIDATION.md)。工具能力與官方來源整理在 [相容性說明](docs/COMPATIBILITY.md)。

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import {blobSha,collectFiles,lessonId,ensureFork,publish,COURSE,REPO_NAME} from '../skills/aibt-workshop/scripts/workshop.mjs';
+import {inflateSync} from 'node:zlib';
+import {blobSha,collectFiles,lessonId,ensureFork,publish,testFiles,COURSE,REPO_NAME} from '../skills/aibt-workshop/scripts/workshop.mjs';
 
 function github(){
   const store={refs:new Map([['main','c0']]),commits:new Map([['c0',{tree:{sha:'t0'}}]]),trees:new Map([['t0',new Map()]]),blobs:new Map(),prs:[],calls:[],fork:null,counter:0};
@@ -90,7 +91,9 @@ test('binary upload is lossless and retry reuses PR without another commit',asyn
 test('update retains previous remote files; a closed PR gets a fresh revision',async()=>{
   const g=github();await publish(params(g));
   const f={path:'new.md',bytes:Buffer.from('new')};f.sha=blobSha(f.bytes);
-  await publish({...params(g),files:[f]});assert.equal(g.store.prs.length,1);assert.equal(g.store.blobs.has(files()[0].sha),true);
+  const updated=await publish({...params(g),files:[f]});assert.equal(g.store.prs.length,1);
+  const updatedTree=g.store.trees.get(g.store.commits.get(g.store.refs.get(updated.branch)).tree.sha);
+  assert.equal(updatedTree.size,3);assert.equal(updatedTree.get('submissions/student/lesson-02/作品.md'),files()[0].sha);
   g.store.prs[0].state='closed';const revision=await publish(params(g));assert.match(revision.branch,/-r2$/);assert.equal(g.store.prs.length,2);
 });
 test('unexpected branch changes are rejected before uploading',async()=>{
@@ -112,4 +115,18 @@ test('owner requires explicit teacher test and test PR is draft',async()=>{
 test('a bad remote blob hash fails without publishing a ref',async()=>{
   const g=github();const api=async(...args)=>args[0].endsWith('/git/blobs')?{sha:'wrong'}:g.api(...args);
   await assert.rejects(publish({...params(g),api}),/雜湊不符/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
+});
+test('connection fixture is a valid PNG, including chunk checksums',()=>{
+  const bytes=testFiles().find(f=>f.path==='pixel.png').bytes;
+  assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  let offset=8,decoded=false;
+  while(offset<bytes.length){
+    const n=bytes.readUInt32BE(offset),chunk=bytes.subarray(offset+4,offset+8+n);
+    let crc=0xffffffff;
+    for(const value of chunk){crc^=value;for(let i=0;i<8;i++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}
+    assert.equal((crc^0xffffffff)>>>0,bytes.readUInt32BE(offset+8+n));
+    if(chunk.subarray(0,4).toString()==='IDAT'){assert.equal(inflateSync(chunk.subarray(4)).length,3);decoded=true;}
+    offset+=n+12;
+  }
+  assert.equal(offset,bytes.length);assert.equal(decoded,true);
 });

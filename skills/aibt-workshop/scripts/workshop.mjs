@@ -166,10 +166,10 @@ export async function publish({api=ghApi,context,repo,slug,files,test=false,summ
   if(verified.state!=='open'||verified.base.ref!=='main'||verified.head.ref!==branch||verified.head.repo?.full_name?.toLowerCase()!==repo.toLowerCase()||test&&!verified.draft) throw new Error('PR 狀態驗證未通過，請查詢狀態。');
   return {login,mode:repo===COURSE?'teacher-test':'student-fork',repository:repo,branch,filesVerified:targetFiles.length,changed:changed.length,pr:verified.html_url,draft:verified.draft,folder:`https://github.com/${repo}/tree/${branch}/${prefix}`};
 }
-function testFiles(){
+export function testFiles(){
   return [
     {path:'connection.md',bytes:Buffer.from('# AIBT 連線測試\n\n文字與圖片上傳測試。\n'+new Date().toISOString()+'\n')},
-    {path:'pixel.png',bytes:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')}
+    {path:'pixel.png',bytes:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64')}
   ].map(f=>({...f,sha:blobSha(f.bytes)}));
 }
 export async function main(argv=process.argv.slice(2)){
