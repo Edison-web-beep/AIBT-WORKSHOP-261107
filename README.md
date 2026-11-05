@@ -1,28 +1,28 @@
 # AIBT WORKSHOP · 261107
 
-課程教材、學生作品與 GitHub 提交 Skill。老師：[@f3484134](https://github.com/f3484134)。
+课程教材、学生作品与 GitHub 提交 Skill。老师：[@f3484134](https://github.com/f3484134)。
 
-**學生先看：[三步開始](docs/STUDENT-START.md) → [安裝方法](docs/INSTALL.md) → [完整 Prompt 清單](docs/PROMPTS.md)。**
+**学生先看：[三步开始](docs/STUDENT-START.md) → [安装方法](docs/INSTALL.md) → [完整 Prompt 清单](docs/PROMPTS.md)。**
 
-1. [註冊自己的 GitHub 帳號](https://github.com/signup)，完成 Email 驗證。
-2. [下載提交 Skill](downloads/aibt-workshop.zip?raw=true)，依自己的 IDE 安裝。
-3. 告訴 Agent：「使用 aibt-workshop，幫我初始化課程並完成首次連線測試。」
+1. [注册自己的 GitHub 账号](https://github.com/signup)，完成 Email 验证。
+2. [下载提交 Skill](downloads/aibt-workshop.zip?raw=true)，依自己的 IDE 安装。
+3. 告诉 Agent：「使用 aibt-workshop，帮我初始化课程并完成首次连接测试。」
 
-之後只要說：**「提交第 2 課作業，作品在這個資料夾：〈路徑〉。」**
+之后只要说：**「提交第 2 课作业，作品在这个文件夹：〈路径〉。」**
 
-Agent 會建立／確認自己的 Fork、上傳作品，並向本課程開啟 PR（提交單）。老師合併後，作品才會出現在本倉庫的 `main`；合併前也可在公開 PR 相互觀摩。
+Agent 会创建／确认自己的 Fork、上传作品，并向本课程打开 PR（提交单）。老师合并后，作品才会出现在本仓库的 `main`；合并前也可在公开 PR 相互观摩。
 
-| 目錄 | 用途 |
+| 目录 | 用途 |
 |---|---|
-| [lessons/](lessons/) | 教材與練習說明；正式課次由老師補充 |
-| [submissions/](submissions/) | 已合併的學生作品，按帳號與課次整理 |
-| [connection-tests/](connection-tests/) | 連線測試用途；測試檔通常留在草稿 PR |
-| [skills/aibt-workshop/](skills/aibt-workshop/) | 同一個 Skill：初始化、測試、提交、重交、查詢 |
-| [downloads/](downloads/) | 可匯入的 Skill ZIP |
-| [docs/](docs/) | 學生、老師操作指引與 Prompt 清單 |
-| [templates/](templates/) | 作品說明範本 |
-| [tools/](tools/) | 專案內 Skill 安裝器 |
+| [lessons/](lessons/) | 教材与练习说明；正式课次由老师补充 |
+| [submissions/](submissions/) | 已合并的学生作品，按账号与课次整理 |
+| [connection-tests/](connection-tests/) | 连接测试用途；测试文件通常留在草稿 PR |
+| [skills/aibt-workshop/](skills/aibt-workshop/) | 同一个 Skill：初始化、测试、提交、重交、查询 |
+| [downloads/](downloads/) | 可导入的 Skill ZIP |
+| [docs/](docs/) | 学生、老师操作指引与 Prompt 清单 |
+| [templates/](templates/) | 作品说明范本 |
+| [tools/](tools/) | 项目内 Skill 安装器 |
 
-本課程與 Fork、PR、檔案歷史皆公開。只提交可公開的作品，不放個資、公司內部文件、密碼或 API Key。請使用 GitHub 帳號辨識，不要求真名、手機或 Email。公開可瀏覽不等於放棄著作權；轉用他人作品先確認授權。
+本课程与 Fork、PR、文件历史皆公开。只提交可公开的作品，不放个人信息、公司内部文件、密码或 API Key。请使用 GitHub 账号辨识，不要求真名、手机或 Email。公开可浏览不等于放弃着作权；转用他人作品先确认授权。
 
-老師請看 [管理與本地測試](docs/TEACHER.md) 與 [已完成的驗證](docs/VALIDATION.md)。工具能力與官方來源整理在 [相容性說明](docs/COMPATIBILITY.md)。
+老师请看 [管理与本地测试](docs/TEACHER.md) 与 [已完成的验证](docs/VALIDATION.md)。工具能力与官方来源整理在 [相容性说明](docs/COMPATIBILITY.md)。

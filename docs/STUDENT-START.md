@@ -1,45 +1,45 @@
-# 學生三步開始
+# 学生三步开始
 
-## 1. 註冊帳號
+## 1. 注册账号
 
-到 https://github.com/signup 註冊個人帳號並驗證 Email。記住自己的帳號名稱。密碼、驗證碼、郵件驗證與登入授權請自己完成，不要貼給 Agent 或老師。
+到 https://github.com/signup 注册个人账号并验证 Email。记住自己的账号名称。密码、验证码、邮件验证与登录授权请自己完成，不要发给 Agent 或老师。
 
-## 2. 安裝一次 Skill
+## 2. 安装一次 Skill
 
-下載 [aibt-workshop.zip](../downloads/aibt-workshop.zip?raw=true)，依 [安裝方法](INSTALL.md) 匯入自己的工具。WorkBuddy 可從「技能」上傳 ZIP；Qoder 可請 Agent 幫忙放進專案。
+下载 [aibt-workshop.zip](../downloads/aibt-workshop.zip?raw=true)，依 [安装方法](INSTALL.md) 导入自己的工具。WorkBuddy 可从「技能」上传 ZIP；Qoder 可请 Agent 帮忙放进项目。
 
-這不是瀏覽器版 ChatGPT 上傳附件；要在能讀取作品資料夾、使用 Skills 與 GitHub 工具的 Agent 環境操作。
+这不是浏览器版 ChatGPT 上传附件；要在能读取作品文件夹、使用 Skills 与 GitHub 工具的 Agent 环境操作。
 
-## 3. 第一次就測到能交件
+## 3. 第一次就测到能提交
 
-在 Agent 複製：
-
-```text
-使用 aibt-workshop，幫我初始化 AIBT-WORKSHOP-261107 課程並完成首次連線測試。
-優先使用已連接的 GitHub；能力不足時引導我完成最少的必要設定。
-請確認實際登入帳號，建立或確認我的 Fork，實際上傳測試文字與圖片，
-建立草稿測試 PR，讀回驗證後給我 PR 連結及每一步的通過狀態。
-```
-
-首次可能出現兩種本人操作：
-
-- 連接器／GitHub CLI 開啟 GitHub 授權頁，請自己完成。
-- 連接器沒有 Fork 工具時，點 [建立自己的 Fork](https://github.com/f3484134/AIBT-WORKSHOP-261107/fork)，按 Create fork 後回來告訴 Agent「Fork 已完成，繼續測試」。
-
-收到 **草稿測試 PR 連結**，而且文字、圖片、PR 都驗證通過，才算完整成功。只顯示「可連 GitHub」仍未完成測試。測試檔是 Agent 生成的小檔案，不會掃描或上傳你的作品。
-
-## 正式交作業
-
-把這次要公開的作品放在一個獨立資料夾，然後說：
+在 Agent 中粘贴：
 
 ```text
-提交第 2 課作業，作品在這個資料夾：〈選取或貼上作品資料夾路徑〉。
+使用 aibt-workshop，帮我初始化 AIBT-WORKSHOP-261107 课程并完成首次连接测试。
+优先使用已连接的 GitHub；能力不足时引导我完成最少的必要设置。
+请确认实际登录账号，创建或确认我的 Fork，实际上传测试文字与图片，
+创建草稿测试 PR，读取并验证后给我 PR 链接及每一步的通过状态。
 ```
 
-不用自己建學生目錄、不用每次 Fork、不用記 Git 指令。想改進後重交，就說「更新第 2 課作業，作品在……」。
+首次可能出现两种本人操作：
 
-提交完成後留存 PR 連結。老師還沒合併時，在 [Pull requests](https://github.com/f3484134/AIBT-WORKSHOP-261107/pulls) 看作品；合併後在 [submissions](../submissions/) 看。
+- 连接器／GitHub CLI 打开 GitHub 授权页，请自己完成。
+- 连接器没有 Fork 工具时，点 [创建自己的 Fork](https://github.com/f3484134/AIBT-WORKSHOP-261107/fork)，按 Create fork 后回来告诉 Agent「Fork 已完成，继续测试」。
 
-一次最多 200 檔、單檔 20 MiB、合計 50 MiB。大型影音可改放自己的公開分享連結，並寫入作品 README。檔案重新命名後舊檔會保留；需要移除時要另行指定。
+收到 **草稿测试 PR 链接**，而且文字、图片、PR 都验证通过，才算完整成功。只显示「可连 GitHub」仍未完成测试。测试文件是 Agent 生成的小文件，不会扫描或上传你的作品。
 
-更多情境見 [完整 Prompt 清單](PROMPTS.md)。
+## 正式交作业
+
+把这次要公开的作品放在一个独立文件夹，然后说：
+
+```text
+提交第 2 课作业，作品在这个文件夹：〈选取或粘贴作品文件夹路径〉。
+```
+
+不用自己建学生目录、不用每次 Fork、不用记 Git 指令。想改进后重交，就说「更新第 2 课作业，作品在……」。
+
+提交完成后留存 PR 链接。老师还没合并时，在 [Pull requests](https://github.com/f3484134/AIBT-WORKSHOP-261107/pulls) 看作品；合并后在 [submissions](../submissions/) 看。
+
+一次最多 200 个文件、单个文件 20 MiB、合计 50 MiB。大型音视频文件可改放自己的公开分享链接，并写入作品 README。文件重新命名后旧文件会保留；需要移除时要另行指定。
+
+更多情境见 [完整 Prompt 清单](PROMPTS.md)。

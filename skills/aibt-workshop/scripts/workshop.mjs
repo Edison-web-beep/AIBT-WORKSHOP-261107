@@ -17,45 +17,45 @@ const SECRET_CONTENT=/(-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\bgh[pousr]_[A-Z
 export const blobSha=b=>createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');
 export function lessonId(value){
   const m=String(value??'').match(/^(?:lesson-)?([1-9]\d?|0[1-9])$/);
-  if(!m) throw new Error('課次請用 1–99，例如 --lesson 2。');
+  if(!m) throw new Error('课次请用 1–99，例如 --lesson 2。');
   return 'lesson-'+String(Number(m[1])).padStart(2,'0');
 }
 function safeLogin(value){
-  if(!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(value)) throw new Error('GitHub 帳號格式錯誤。');
+  if(!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(value)) throw new Error('GitHub 账号格式错误。');
   return value.toLowerCase();
 }
 export async function collectFiles(source){
   const requested=path.resolve(source);
-  if((await fs.lstat(requested)).isSymbolicLink()) throw new Error('作品根目錄不能是符號連結。');
+  if((await fs.lstat(requested)).isSymbolicLink()) throw new Error('作品根目录不能是符号链接。');
   const root=await fs.realpath(requested);
-  if(!(await fs.stat(root)).isDirectory()) throw new Error('請指定作品資料夾。');
-  if(root===path.parse(root).root || root===os.homedir()) throw new Error('請選作品子資料夾，不要選磁碟根目錄或個人主目錄。');
+  if(!(await fs.stat(root)).isDirectory()) throw new Error('请指定作品文件夹。');
+  if(root===path.parse(root).root || root===os.homedir()) throw new Error('请选作品子文件夹，不要选磁盘根目录或个人主目录。');
   const files=[], skipped=[]; let total=0;
   async function walk(dir,rel=''){
     for(const entry of (await fs.readdir(dir,{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name))){
       const local=path.join(dir,entry.name), relative=(rel?rel+'/':'')+entry.name;
-      if(entry.isSymbolicLink()){skipped.push({path:relative,reason:'符號連結'});continue;}
-      if(SECRET_NAME.test(entry.name)){skipped.push({path:relative,reason:'憑證或環境設定檔'});continue;}
+      if(entry.isSymbolicLink()){skipped.push({path:relative,reason:'符号链接'});continue;}
+      if(SECRET_NAME.test(entry.name)){skipped.push({path:relative,reason:'凭证或环境配置文件'});continue;}
       if(entry.isDirectory()){
-        if(SKIP_DIRS.has(entry.name)||entry.name.startsWith('.')) skipped.push({path:relative+'/',reason:'系統或相依套件目錄'});
+        if(SKIP_DIRS.has(entry.name)||entry.name.startsWith('.')) skipped.push({path:relative+'/',reason:'系统或依赖包目录'});
         else await walk(local,relative);
         continue;
       }
       if(!entry.isFile()) continue;
-      if(/[\x00-\x1f\\]/.test(relative)) throw new Error('檔名含不支援字元，請重新命名。');
+      if(/[\x00-\x1f\\]/.test(relative)) throw new Error('文件名含不支持字符，请重新命名。');
       const ext=path.extname(entry.name).slice(1).toLowerCase();
-      if(entry.name.startsWith('.')||!EXTENSIONS.has(ext)){skipped.push({path:relative,reason:'非課堂作品格式'});continue;}
+      if(entry.name.startsWith('.')||!EXTENSIONS.has(ext)){skipped.push({path:relative,reason:'非课堂作品格式'});continue;}
       const stat=await fs.stat(local);
-      if(stat.size>MAX_FILE) throw new Error(`檔案超過 20 MiB：${relative}。請縮小或改在 README 提供公開連結。`);
+      if(stat.size>MAX_FILE) throw new Error(`文件超过 20 MiB：${relative}。请缩小或改在 README 提供公开链接。`);
       const bytes=await fs.readFile(local);
-      if(SECRET_CONTENT.test(bytes.toString('utf8'))) throw new Error(`發現疑似金鑰：${relative}。請移除後再交作業；不會顯示內容。`);
+      if(SECRET_CONTENT.test(bytes.toString('utf8'))) throw new Error(`发现疑似密钥：${relative}。请移除后再交作业；不会显示内容。`);
       total+=bytes.length;
-      if(total>MAX_TOTAL||files.length>=MAX_FILES) throw new Error('一次最多 200 檔、合計 50 MiB；請選較小的作品資料夾。');
+      if(total>MAX_TOTAL||files.length>=MAX_FILES) throw new Error('一次最多 200 个文件、合计 50 MiB；请选较小的作品文件夹。');
       files.push({path:relative,bytes,sha:blobSha(bytes)});
     }
   }
   await walk(root);
-  if(!files.length) throw new Error('沒有可提交的作品檔案。');
+  if(!files.length) throw new Error('没有可提交的作品文件。');
   return {root,files,skipped,total};
 }
 
@@ -68,7 +68,7 @@ export function ghApi(endpoint,method='GET',body){
     return raw.trim()?JSON.parse(raw):{};
   }catch(error){
     const status=Number(String(error.stderr??'').match(/HTTP (\d{3})/)?.[1]??0);
-    const message=error.code==='ENOENT'?'未找到 GitHub CLI（gh）。請安裝官方版本後重新開啟 IDE。':`GitHub ${method} 失敗（${status||'連線／登入'}）。請檢查網路、gh auth status 與 Repo 授權。`;
+    const message=error.code==='ENOENT'?'未找到 GitHub CLI（gh）。请安装官方版本后重新打开 IDE。':`GitHub ${method} 失败（${status||'连接／登录'}）。请检查网络、gh auth status 与 Repo 授权。`;
     throw Object.assign(new Error(message),{status});
   }
 }
@@ -77,13 +77,13 @@ async function optional(api,endpoint){try{return await api(endpoint);}catch(e){i
 export async function identity(api=ghApi){
   const user=await api('/user'); const login=safeLogin(user.login);
   const upstream=await api('/repos/'+COURSE);
-  if(upstream.private||upstream.default_branch!=='main') throw new Error('課程倉庫需是公開且預設分支為 main，請通知老師。');
+  if(upstream.private||upstream.default_branch!=='main') throw new Error('课程仓库需是公开且默认分支为 main，请通知老师。');
   return {login,upstream};
 }
 export async function ensureFork(context,api=ghApi,{teacherTest=false}={}){
   const {login,upstream}=context;
   if(login===COURSE.split('/')[0]){
-    if(!teacherTest) throw new Error('這是老師帳號；連線測試請加 --teacher-test。正式學生測試請改用另一個 GitHub 帳號。');
+    if(!teacherTest) throw new Error('这是老师账号；连接测试请加 --teacher-test。正式学生测试请改用另一个 GitHub 账号。');
     return COURSE;
   }
   const repo=login+'/'+REPO_NAME;
@@ -96,9 +96,9 @@ export async function ensureFork(context,api=ghApi,{teacherTest=false}={}){
       await wait(2000);
     }
   }
-  if(!fork) throw new Error('GitHub 還在建立 Fork，請稍後用相同 Prompt 重試。');
-  if(!fork.fork||fork.parent?.id!==upstream.id) throw new Error(`您的 ${REPO_NAME} 不是本課程的 Fork。請先處理同名倉庫，不會覆寫它。`);
-  if(fork.private) throw new Error('Fork 未公開，請檢查 GitHub 設定。');
+  if(!fork) throw new Error('GitHub 还在创建 Fork，请稍后用相同 Prompt 重试。');
+  if(!fork.fork||fork.parent?.id!==upstream.id) throw new Error(`您的 ${REPO_NAME} 不是本课程的 Fork。请先处理同名仓库，不会覆盖它。`);
+  if(fork.private) throw new Error('Fork 未公开，请检查 GitHub 设置。');
   return repo;
 }
 export async function chooseBranch(api,repo,login,slug){
@@ -107,18 +107,18 @@ export async function chooseBranch(api,repo,login,slug){
   for(let n=1;n<=99;n++){
     const branch=base+(n===1?'':'-r'+n);
     const prs=await api(`/repos/${COURSE}/pulls?state=all&head=${encodeURIComponent(login+':'+branch)}&base=main&per_page=100`);
-    if(prs.length>1) throw new Error('同分支有多筆 PR，請先用狀態查詢確認。');
+    if(prs.length>1) throw new Error('同分支有多笔 PR，请先用状态查询确认。');
     if(prs[0]?.state==='open') return {branch,pr:prs[0]};
     if(prs.length) continue;
     return {branch,pr:null};
   }
-  throw new Error('此課次分支版本過多，請通知老師。');
+  throw new Error('此课次分支版本过多，请通知老师。');
 }
 export async function publish({api=ghApi,context,repo,slug,files,test=false,summary=''}){
   const {login}=context;
   const prefix=(test?'connection-tests/':'submissions/')+login+'/'+(test?'':slug+'/');
   const targetFiles=files.map(f=>({...f,path:prefix+f.path}));
-  if(!targetFiles.length||targetFiles.some(f=>!f.path.startsWith(prefix)||f.path.split('/').includes('..'))) throw new Error('提交路徑不合法。');
+  if(!targetFiles.length||targetFiles.some(f=>!f.path.startsWith(prefix)||f.path.split('/').includes('..'))) throw new Error('提交路径不合法。');
   const selected=await chooseBranch(api,repo,login,slug);
   const {branch}=selected;
   let ref=await optional(api,`/repos/${repo}/git/ref/heads/${branch}`);
@@ -128,78 +128,78 @@ export async function publish({api=ghApi,context,repo,slug,files,test=false,summ
   }
   const checkScope=async()=>{
     const diff=await api(`/repos/${COURSE}/compare/main...${encodeURIComponent(login+':'+branch)}`);
-    if(!Array.isArray(diff.files)||diff.files.length>=300||diff.files.some(f=>!f.filename.startsWith(prefix)||f.previous_filename&&!f.previous_filename.startsWith(prefix))) throw new Error('分支含有本人本課範圍以外的變更，已停止；不會覆寫或提交其他資料。');
+    if(!Array.isArray(diff.files)||diff.files.length>=300||diff.files.some(f=>!f.filename.startsWith(prefix)||f.previous_filename&&!f.previous_filename.startsWith(prefix))) throw new Error('分支含有本人本课范围以外的变更，已停止；不会覆盖或提交其他资料。');
   };
   await checkScope();
   const parent=ref.object.sha;
   const commit=await api(`/repos/${repo}/git/commits/${parent}`);
   const tree=await api(`/repos/${repo}/git/trees/${commit.tree.sha}?recursive=1`);
-  if(tree.truncated) throw new Error('GitHub 目錄清單被截斷，請通知老師。');
+  if(tree.truncated) throw new Error('GitHub 目录清单被截断，请通知老师。');
   const existing=new Map(tree.tree.filter(x=>x.type==='blob').map(x=>[x.path,x.sha]));
   const changed=targetFiles.filter(f=>existing.get(f.path)!==f.sha);
   if(changed.length){
     const entries=[];
     for(const f of changed){
       const blob=await api(`/repos/${repo}/git/blobs`,'POST',{content:f.bytes.toString('base64'),encoding:'base64'});
-      if(blob.sha!==f.sha) throw new Error('上傳內容雜湊不符，已停止。');
+      if(blob.sha!==f.sha) throw new Error('上传内容哈希不符，已停止。');
       entries.push({path:f.path,mode:'100644',type:'blob',sha:blob.sha});
     }
     const newTree=await api(`/repos/${repo}/git/trees`,'POST',{base_tree:commit.tree.sha,tree:entries});
     const newCommit=await api(`/repos/${repo}/git/commits`,'POST',{message:`${test?'test':'submit'}: ${login} ${slug}`,tree:newTree.sha,parents:[parent]});
     // Detect concurrent updates, and never force a branch backwards.
     const latest=await api(`/repos/${repo}/git/ref/heads/${branch}`);
-    if(latest.object.sha!==parent) throw new Error('分支同時被更新；請重新提交以保留兩邊變更。');
+    if(latest.object.sha!==parent) throw new Error('分支同时被更新；请重新提交以保留两边变更。');
     await api(`/repos/${repo}/git/refs/heads/${branch}`,'PATCH',{sha:newCommit.sha,force:false});
   }
   // Verify content hashes through Git data; works for text and binary alike.
   const finalRef=await api(`/repos/${repo}/git/ref/heads/${branch}`);
   const finalTree=await api(`/repos/${repo}/git/trees/${finalRef.object.sha}?recursive=1`);
-  if(finalTree.truncated) throw new Error('無法完整驗證遠端目錄。');
+  if(finalTree.truncated) throw new Error('无法完整验证远端目录。');
   const remote=new Map(finalTree.tree.map(x=>[x.path,x.sha]));
-  if(targetFiles.some(f=>remote.get(f.path)!==f.sha)) throw new Error('遠端檔案驗證失敗，尚不能視為交件成功。');
+  if(targetFiles.some(f=>remote.get(f.path)!==f.sha)) throw new Error('远端文件验证失败，尚不能视为提交成功。');
   await checkScope();
   let pr=selected.pr;
   if(!pr){
-    pr=await api(`/repos/${COURSE}/pulls`,'POST',{base:'main',head:login+':'+branch,title:`${test?'[連線測試]':'[作業]'} ${login} / ${slug}`,body:`${test?'首次連線測試；此 PR 保留為草稿，無須合併。':'課堂作品提交；請老師檢閱後合併。'}\n\n${summary}\n\n作品：\`${prefix}\`\n\n由 aibt-workshop Skill 提交；內容公開。`,draft:test,maintainer_can_modify:true});
+    pr=await api(`/repos/${COURSE}/pulls`,'POST',{base:'main',head:login+':'+branch,title:`${test?'[连接测试]':'[作业]'} ${login} / ${slug}`,body:`${test?'首次连接测试；此 PR 保留为草稿，无须合并。':'课堂作品提交；请老师审阅后合并。'}\n\n${summary}\n\n作品：\`${prefix}\`\n\n由 aibt-workshop Skill 提交；内容公开。`,draft:test,maintainer_can_modify:true});
   }
   const verified=await api(`/repos/${COURSE}/pulls/${pr.number}`);
-  if(verified.state!=='open'||verified.base.ref!=='main'||verified.head.ref!==branch||verified.head.repo?.full_name?.toLowerCase()!==repo.toLowerCase()||test&&!verified.draft) throw new Error('PR 狀態驗證未通過，請查詢狀態。');
+  if(verified.state!=='open'||verified.base.ref!=='main'||verified.head.ref!==branch||verified.head.repo?.full_name?.toLowerCase()!==repo.toLowerCase()||test&&!verified.draft) throw new Error('PR 状态验证未通过，请查询状态。');
   return {login,mode:repo===COURSE?'teacher-test':'student-fork',repository:repo,branch,filesVerified:targetFiles.length,changed:changed.length,pr:verified.html_url,draft:verified.draft,folder:`https://github.com/${repo}/tree/${branch}/${prefix}`};
 }
 export function testFiles(){
   return [
-    {path:'connection.md',bytes:Buffer.from('# AIBT 連線測試\n\n文字與圖片上傳測試。\n'+new Date().toISOString()+'\n')},
+    {path:'connection.md',bytes:Buffer.from('# AIBT 连接测试\n\n文字与图片上传测试。\n'+new Date().toISOString()+'\n')},
     {path:'pixel.png',bytes:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64')}
   ].map(f=>({...f,sha:blobSha(f.bytes)}));
 }
 export async function main(argv=process.argv.slice(2)){
   const command=argv.shift()??'help'; const opts={};
-  while(argv.length){const key=argv.shift();if(!key.startsWith('--')) throw new Error('請使用 --參數 值。');if(key==='--teacher-test') opts.teacherTest=true;else{if(!argv.length)throw new Error('缺少參數值。');opts[key.slice(2)]=argv.shift();}}
-  if(command==='help') return {commands:['doctor（唯讀）','init（建立或確認 Fork）','test [--teacher-test]（文字、圖片及草稿 PR）','plan --source <folder>（本地預覽）','submit --lesson 2 --source <folder> [--summary <text>]','status（唯讀）'],course:COURSE};
+  while(argv.length){const key=argv.shift();if(!key.startsWith('--')) throw new Error('请使用 --参数 值。');if(key==='--teacher-test') opts.teacherTest=true;else{if(!argv.length)throw new Error('缺少参数值。');opts[key.slice(2)]=argv.shift();}}
+  if(command==='help') return {commands:['doctor（只读）','init（创建或确认 Fork）','test [--teacher-test]（文字、图片及草稿 PR）','plan --source <folder>（本地预览）','submit --lesson 2 --source <folder> [--summary <text>]','status（只读）'],course:COURSE};
   if(command==='plan'){
-    if(!opts.source)throw new Error('請用 --source 指定作品資料夾。');
+    if(!opts.source)throw new Error('请用 --source 指定作品文件夹。');
     const p=await collectFiles(opts.source);
-    return {source:p.root,files:p.files.map(f=>({path:f.path,bytes:f.bytes.length,sha:f.sha})),skipped:p.skipped,totalBytes:p.total,limits:{files:MAX_FILES,fileMiB:20,totalMiB:50},note:'本地預覽；尚未上傳。更新只新增／覆寫同名檔，不刪除遠端舊檔。'};
+    return {source:p.root,files:p.files.map(f=>({path:f.path,bytes:f.bytes.length,sha:f.sha})),skipped:p.skipped,totalBytes:p.total,limits:{files:MAX_FILES,fileMiB:20,totalMiB:50},note:'本地预览；尚未上传。更新只新增／覆盖同名文件，不删除远端旧文件。'};
   }
-  if(!['doctor','init','test','submit','status'].includes(command)) throw new Error('未知命令，請執行 help。');
+  if(!['doctor','init','test','submit','status'].includes(command)) throw new Error('未知命令，请执行 help。');
   // Scan and reject invalid files before creating any remote state.
   let plan,slug;
   if(command==='submit'){
     slug=lessonId(opts.lesson);
-    if(!opts.source)throw new Error('請用 --source 指定作品資料夾。');
+    if(!opts.source)throw new Error('请用 --source 指定作品文件夹。');
     plan=await collectFiles(opts.source);
   }
   const context=await identity();
-  if(command==='doctor') return {login:context.login,course:COURSE,read:'PASS',write:'NOT_TESTED',fork:context.login===COURSE.split('/')[0]?'OWNER':await optional(ghApi,'/repos/'+context.login+'/'+REPO_NAME)?'EXISTS':'NOT_CREATED',next:'執行 test 完成實際寫入與 PR 測試。'};
+  if(command==='doctor') return {login:context.login,course:COURSE,read:'PASS',write:'NOT_TESTED',fork:context.login===COURSE.split('/')[0]?'OWNER':await optional(ghApi,'/repos/'+context.login+'/'+REPO_NAME)?'EXISTS':'NOT_CREATED',next:'执行 test 完成实际写入与 PR 测试。'};
   if(command==='status'){
     const prs=await ghApi(`/repos/${COURSE}/pulls?state=all&per_page=100&sort=updated&direction=desc`);
-    return {login:context.login,prs:prs.filter(p=>p.user.login.toLowerCase()===context.login).map(p=>({number:p.number,title:p.title,state:p.merged_at?'merged':p.state,draft:p.draft,url:p.html_url})),note:'最近 100 筆全班 PR 範圍；完整紀錄請看 GitHub author 篩選。',all:`https://github.com/${COURSE}/pulls?q=is%3Apr+author%3A${context.login}`};
+    return {login:context.login,prs:prs.filter(p=>p.user.login.toLowerCase()===context.login).map(p=>({number:p.number,title:p.title,state:p.merged_at?'merged':p.state,draft:p.draft,url:p.html_url})),note:'最近 100 笔全班 PR 范围；完整记录请看 GitHub author 筛选。',all:`https://github.com/${COURSE}/pulls?q=is%3Apr+author%3A${context.login}`};
   }
   const repo=await ensureFork(context,ghApi,{teacherTest:opts.teacherTest&&command==='test'});
-  if(command==='init') return {login:context.login,fork:'https://github.com/'+repo,next:'執行 test 做首次上傳測試。'};
+  if(command==='init') return {login:context.login,fork:'https://github.com/'+repo,next:'执行 test 做首次上传测试。'};
   if(command==='test') return publish({context,repo,slug:'connection-test',files:testFiles(),test:true});
   const result=await publish({context,repo,slug,files:plan.files,summary:opts.summary??''});
-  return {...result,skipped:plan.skipped,note:'已提交 PR；老師合併後才會出現在課程 main。遠端舊檔不會自動刪除。'};
+  return {...result,skipped:plan.skipped,note:'已提交 PR；老师合并后才会出现在课程 main。远端旧文件不会自动删除。'};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   main().then(result=>console.log(JSON.stringify(result,null,2))).catch(error=>{console.error(JSON.stringify({ok:false,message:error.message}));process.exitCode=1;});

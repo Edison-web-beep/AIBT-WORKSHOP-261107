@@ -66,20 +66,20 @@ test('lesson numbers normalize and traversal is rejected',()=>{
 test('scanner preserves nested Unicode/binary; excludes settings and dependencies',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'aibt-test-'));
   try{
-    await fs.mkdir(path.join(root,'圖'));await fs.mkdir(path.join(root,'node_modules'));await fs.mkdir(path.join(root,'.git'));
-    await fs.writeFile(path.join(root,'圖','image.png'),Buffer.from([0,255,1]));await fs.writeFile(path.join(root,'README.md'),'作品');
+    await fs.mkdir(path.join(root,'图'));await fs.mkdir(path.join(root,'node_modules'));await fs.mkdir(path.join(root,'.git'));
+    await fs.writeFile(path.join(root,'图','image.png'),Buffer.from([0,255,1]));await fs.writeFile(path.join(root,'README.md'),'作品');
     await fs.writeFile(path.join(root,'.env'),'TOKEN=hidden');await fs.writeFile(path.join(root,'secret.key'),'hidden');await fs.writeFile(path.join(root,'node_modules','a.js'),'no');
-    const result=await collectFiles(root);assert.equal(result.files.length,2);assert.equal(result.skipped.length,4);assert.deepEqual(result.files.find(f=>f.path==='圖/image.png').bytes,Buffer.from([0,255,1]));
+    const result=await collectFiles(root);assert.equal(result.files.length,2);assert.equal(result.skipped.length,4);assert.deepEqual(result.files.find(f=>f.path==='图/image.png').bytes,Buffer.from([0,255,1]));
   }finally{await fs.rm(root,{recursive:true,force:true});}
 });
 test('scanner blocks a key inside an otherwise allowed text file',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'aibt-secret-'));
-  try{await fs.writeFile(path.join(root,'README.md'),'example gh'+'p_'+'a'.repeat(30));await assert.rejects(collectFiles(root),/疑似金鑰/);}finally{await fs.rm(root,{recursive:true,force:true});}
+  try{await fs.writeFile(path.join(root,'README.md'),'example gh'+'p_'+'a'.repeat(30));await assert.rejects(collectFiles(root),/疑似密钥/);}finally{await fs.rm(root,{recursive:true,force:true});}
 });
 test('fork initialization is idempotent and rejects unrelated repo',async()=>{
   const g=github();assert.equal(await ensureFork(context,g.api),'student/'+REPO_NAME);await ensureFork(context,g.api);
   assert.equal(g.store.calls.filter(c=>c.method==='POST').length,1);
-  g.store.fork.parent.id=999;await assert.rejects(ensureFork(context,g.api),/不是本課程/);
+  g.store.fork.parent.id=999;await assert.rejects(ensureFork(context,g.api),/不是本课程/);
 });
 test('binary upload is lossless and retry reuses PR without another commit',async()=>{
   const g=github(),result=await publish(params(g));assert.equal(result.filesVerified,2);assert.equal(result.draft,false);
@@ -98,23 +98,23 @@ test('update retains previous remote files; a closed PR gets a fresh revision',a
 });
 test('unexpected branch changes are rejected before uploading',async()=>{
   const g=github();g.store.refs.set('aibt/student/lesson-02','bad');g.store.commits.set('bad',{tree:{sha:'bad-tree'}});g.store.trees.set('bad-tree',new Map([['lessons/README.md','foreign']]));
-  await assert.rejects(publish(params(g)),/範圍以外/);assert.equal(g.store.blobs.size,0);assert.equal(g.store.prs.length,0);
+  await assert.rejects(publish(params(g)),/范围以外/);assert.equal(g.store.blobs.size,0);assert.equal(g.store.prs.length,0);
 });
 test('concurrent branch updates never force or open a PR',async()=>{
   const g=github();let reads=0;
   const api=async(...args)=>{const [endpoint,method='GET']=args;if(method==='GET'&&endpoint.endsWith('/git/ref/heads/aibt/student/lesson-02')&&++reads===2)return {object:{sha:'someone-else'}};return g.api(...args);};
-  await assert.rejects(publish({...params(g),api}),/同時被更新/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
+  await assert.rejects(publish({...params(g),api}),/同时被更新/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
 });
 test('owner requires explicit teacher test and test PR is draft',async()=>{
   const g=github(),owner={login:'f3484134',upstream:{id:123}};
-  await assert.rejects(ensureFork(owner,g.api),/老師帳號/);
+  await assert.rejects(ensureFork(owner,g.api),/老师账号/);
   assert.equal(await ensureFork(owner,g.api,{teacherTest:true}),COURSE);
   const result=await publish({api:g.api,context:owner,repo:COURSE,slug:'connection-test',files:files(),test:true});
   assert.equal(result.mode,'teacher-test');assert.equal(result.draft,true);
 });
 test('a bad remote blob hash fails without publishing a ref',async()=>{
   const g=github();const api=async(...args)=>args[0].endsWith('/git/blobs')?{sha:'wrong'}:g.api(...args);
-  await assert.rejects(publish({...params(g),api}),/雜湊不符/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
+  await assert.rejects(publish({...params(g),api}),/哈希不符/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
 });
 test('connection fixture is a valid PNG, including chunk checksums',()=>{
   const bytes=testFiles().find(f=>f.path==='pixel.png').bytes;

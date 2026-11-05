@@ -1,10 +1,10 @@
-# 第 0 步：準備與連線測試
+# 第 0 步：准备与连接测试
 
-這是開課準備，不是正式作業題目。
+这是开课准备，不是正式作业题目。
 
-1. 註冊自己的 GitHub 帳號、完成 Email 驗證。
-2. 按 [安裝指引](../../docs/INSTALL.md) 安裝 aibt-workshop。
-3. 貼 [首次連線測試 Prompt](../../docs/STUDENT-START.md)。
-4. 取得草稿測試 PR 連結，確認文字、圖片及 PR 驗證通過。
+1. 注册自己的 GitHub 账号、完成 Email 验证。
+2. 按 [安装指引](../../docs/INSTALL.md) 安装 aibt-workshop。
+3. 粘贴 [首次连接测试 Prompt](../../docs/STUDENT-START.md)。
+4. 取得草稿测试 PR 链接，确认文字、图片及 PR 验证通过。
 
-老師帳號的測試不能代替學生 Fork 測試。
+老师账号的测试不能代替学生 Fork 测试。
