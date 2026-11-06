@@ -12,6 +12,8 @@
 
 Agent 会创建／确认自己的 Fork、上传作品，并向本课程打开 PR（提交单）。老师合并后，作品才会出现在本仓库的 `main`；合并前也可在公开 PR 相互观摩。
 
+**练习三材料：[访谈笔记分析](lessons/lesson-03/README.md)**，提供 Word 原文件、Markdown 文字版和准备材料的 Prompt。
+
 | 目录 | 用途 |
 |---|---|
 | [lessons/](lessons/) | 教材与练习说明；正式课次由老师补充 |
