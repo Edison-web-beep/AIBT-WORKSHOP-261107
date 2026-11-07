@@ -5,25 +5,10 @@ import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {fileURLToPath} from 'node:url';
+import {COURSE,REPO_NAME,lessonId,groupId,normalizeLogin,submissionTarget,readCourseConfig,listPullRequests,matchingGroupPulls,MAX_FILE,MAX_TOTAL,MAX_FILES,SKIP_DIRS,EXTENSIONS,SECRET_NAME,SECRET_CONTENT,validateWorkTree,isMain,isMaintenancePR} from './course.mjs';
+export * from './course.mjs';
 
-export const COURSE='f3484134/AIBT-WORKSHOP-261107';
-export const REPO_NAME=COURSE.split('/')[1];
-const MAX_FILE=20*1024*1024, MAX_TOTAL=50*1024*1024, MAX_FILES=200;
-const SKIP_DIRS=new Set(['.git','.agents','.claude','.qoder','.codex','.vscode','.idea','node_modules','.venv','venv','__pycache__','.cache','.next','coverage']);
-const EXTENSIONS=new Set('md txt html htm css js mjs cjs jsx ts tsx json csv tsv yaml yml svg png jpg jpeg gif webp pdf pptx docx xlsx ipynb py r sql xml mp3 mp4 wav zip'.split(' '));
-const SECRET_NAME=/(^\.env($|\.)|^\.npmrc$|^\.pypirc$|^credentials?(\.|$)|^secrets?(\.|$)|^id_(rsa|ed25519)|\.(pem|key|p12|pfx|kdbx)$)/i;
-const SECRET_CONTENT=/(-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{20,}|\bgithub_pat_[A-Za-z0-9_]{20,}|\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}|\bAKIA[0-9A-Z]{16}\b)/;
 export const blobSha=b=>createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');
-export function lessonId(value){
-  const m=String(value??'').match(/^(?:lesson-)?([1-9]\d?|0[1-9])$/);
-  if(!m) throw new Error('课次请用 1–99，例如 --lesson 2。');
-  return 'lesson-'+String(Number(m[1])).padStart(2,'0');
-}
-function safeLogin(value){
-  if(!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(value)) throw new Error('GitHub 账号格式错误。');
-  return value.toLowerCase();
-}
 export async function collectFiles(source){
   const requested=path.resolve(source);
   if((await fs.lstat(requested)).isSymbolicLink()) throw new Error('作品根目录不能是符号链接。');
@@ -75,7 +60,7 @@ export function ghApi(endpoint,method='GET',body){
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function optional(api,endpoint){try{return await api(endpoint);}catch(e){if(e.status===404)return null;throw e;}}
 export async function identity(api=ghApi){
-  const user=await api('/user'); const login=safeLogin(user.login);
+  const user=await api('/user'); const login=normalizeLogin(user.login);
   const upstream=await api('/repos/'+COURSE);
   if(upstream.private||upstream.default_branch!=='main') throw new Error('课程仓库需是公开且默认分支为 main，请通知老师。');
   return {login,upstream};
@@ -108,18 +93,29 @@ export async function chooseBranch(api,repo,login,slug){
     const branch=base+(n===1?'':'-r'+n);
     const prs=await api(`/repos/${COURSE}/pulls?state=all&head=${encodeURIComponent(login+':'+branch)}&base=main&per_page=100`);
     if(prs.length>1) throw new Error('同分支有多笔 PR，请先用状态查询确认。');
-    if(prs[0]?.state==='open') return {branch,pr:prs[0]};
+    if(prs[0]?.state==='open'&&!isMaintenancePR(prs[0])) return {branch,pr:prs[0]};
     if(prs.length) continue;
     return {branch,pr:null};
   }
   throw new Error('此课次分支版本过多，请通知老师。');
 }
-export async function publish({api=ghApi,context,repo,slug,files,test=false,summary=''}){
+export async function publish({api=ghApi,context,repo,slug,group,kind,config,files,test=false,summary=''}){
   const {login}=context;
-  const prefix=(test?'connection-tests/':'submissions/')+login+'/'+(test?'':slug+'/');
+  const target=test?null:submissionTarget(config??await readCourseConfig(api),{login,lesson:slug,group,kind});
+  if(target)slug=target.slug;
+  const prefix=test?'connection-tests/'+login+'/':target.prefix;
+  if(!test&&!files.some(f=>f.path==='README.md'))throw new Error('作品文件夹根目录需要 README.md，说明组别、作品用途与入口。');
+  if(files.some(f=>typeof f.path!=='string'||/[\\\x00-\x1f]/.test(f.path)||f.path.split('/').some(part=>!part||part==='.'||part==='..')))throw new Error('提交路径不合法。');
   const targetFiles=files.map(f=>({...f,path:prefix+f.path}));
   if(!targetFiles.length||targetFiles.some(f=>!f.path.startsWith(prefix)||f.path.split('/').includes('..'))) throw new Error('提交路径不合法。');
   const selected=await chooseBranch(api,repo,login,slug);
+  const checkPending=async()=>{
+    if(!target)return;
+    const pending=matchingGroupPulls(await listPullRequests(api,'open'),target);
+    const other=pending.find(pr=>pr.number!==selected.pr?.number);
+    if(other)throw new Error(`该作品已有其他打开的 PR：${other.html_url??`https://github.com/${COURSE}/pull/${other.number}`}。请先查询状态，避免重复提交。`);
+  };
+  await checkPending();
   const {branch}=selected;
   let ref=await optional(api,`/repos/${repo}/git/ref/heads/${branch}`);
   if(!ref){
@@ -128,7 +124,7 @@ export async function publish({api=ghApi,context,repo,slug,files,test=false,summ
   }
   const checkScope=async()=>{
     const diff=await api(`/repos/${COURSE}/compare/main...${encodeURIComponent(login+':'+branch)}`);
-    if(!Array.isArray(diff.files)||diff.files.length>=300||diff.files.some(f=>!f.filename.startsWith(prefix)||f.previous_filename&&!f.previous_filename.startsWith(prefix))) throw new Error('分支含有本人本课范围以外的变更，已停止；不会覆盖或提交其他资料。');
+    if(!Array.isArray(diff.files)||diff.files.length>=300||diff.files.some(f=>f.status==='removed'||!f.filename.startsWith(prefix)||f.previous_filename&&!f.previous_filename.startsWith(prefix))) throw new Error('分支含有本组本练习范围以外的变更或删除，已停止。');
   };
   await checkScope();
   const parent=ref.object.sha;
@@ -136,6 +132,8 @@ export async function publish({api=ghApi,context,repo,slug,files,test=false,summ
   const tree=await api(`/repos/${repo}/git/trees/${commit.tree.sha}?recursive=1`);
   if(tree.truncated) throw new Error('GitHub 目录清单被截断，请通知老师。');
   const existing=new Map(tree.tree.filter(x=>x.type==='blob').map(x=>[x.path,x.sha]));
+  const replaced=new Set(targetFiles.map(file=>file.path));
+  validateWorkTree({truncated:false,tree:[...tree.tree.filter(entry=>!replaced.has(entry.path)),...targetFiles.map(file=>({path:file.path,type:'blob',mode:'100644',size:file.bytes.length}))]},prefix,{requireReadme:!test});
   const changed=targetFiles.filter(f=>existing.get(f.path)!==f.sha);
   if(changed.length){
     const entries=[];
@@ -158,13 +156,34 @@ export async function publish({api=ghApi,context,repo,slug,files,test=false,summ
   const remote=new Map(finalTree.tree.map(x=>[x.path,x.sha]));
   if(targetFiles.some(f=>remote.get(f.path)!==f.sha)) throw new Error('远端文件验证失败，尚不能视为提交成功。');
   await checkScope();
+  await checkPending();
   let pr=selected.pr;
   if(!pr){
-    pr=await api(`/repos/${COURSE}/pulls`,'POST',{base:'main',head:login+':'+branch,title:`${test?'[连接测试]':'[作业]'} ${login} / ${slug}`,body:`${test?'首次连接测试；此 PR 保留为草稿，无须合并。':'课堂作品提交；请老师审阅后合并。'}\n\n${summary}\n\n作品：\`${prefix}\`\n\n由 aibt-workshop Skill 提交；内容公开。`,draft:test,maintainer_can_modify:true});
+    pr=await api(`/repos/${COURSE}/pulls`,'POST',{base:'main',head:login+':'+branch,title:test?`[连接测试] ${login} / ${slug}`:target.title,body:`${test?'首次连接测试；此 PR 保留为草稿，无须合并。':`课堂作品：${target.lesson} / ${target.group} / ${target.kind}；提交账号：${login}。组别由提交者自报，请老师确认组别及作品后合并。`}\n\n${summary}\n\n作品：\`${prefix}\`\n\n由 aibt-workshop Skill 提交；内容公开。`,draft:test,maintainer_can_modify:true});
   }
   const verified=await api(`/repos/${COURSE}/pulls/${pr.number}`);
   if(verified.state!=='open'||verified.base.ref!=='main'||verified.head.ref!==branch||verified.head.repo?.full_name?.toLowerCase()!==repo.toLowerCase()||test&&!verified.draft) throw new Error('PR 状态验证未通过，请查询状态。');
-  return {login,mode:repo===COURSE?'teacher-test':'student-fork',repository:repo,branch,filesVerified:targetFiles.length,changed:changed.length,pr:verified.html_url,draft:verified.draft,folder:`https://github.com/${repo}/tree/${branch}/${prefix}`};
+  if(target){
+    // The preflight is not a lock: representatives can create from different forks.
+    // Resolve a race by closing only this invocation's newly created, later PR.
+    const pending=matchingGroupPulls(await listPullRequests(api,'open'),target).sort((a,b)=>a.number-b.number);
+    if(!pending.some(p=>p.number===pr.number))throw new Error(`未能在打开的作品 PR 中确认本次提交，请查询状态：${verified.html_url}`);
+    if(pending.length>1){
+      const retained=pending[0],url=retained.html_url??`https://github.com/${COURSE}/pull/${retained.number}`;
+      if(!selected.pr&&pr.number!==retained.number){
+        try{
+          await api(`/repos/${COURSE}/pulls/${pr.number}`,'PATCH',{state:'closed'});
+          const closed=await api(`/repos/${COURSE}/pulls/${pr.number}`);
+          if(closed.state!=='closed')throw new Error('关闭状态未确认');
+        }catch{
+          throw new Error(`检测到同时提交；未能确认新建重复 PR 已关闭：${verified.html_url}。请老师处理，较早的 PR：${url}`);
+        }
+        throw new Error(`检测到同时提交，已关闭本次新建的重复 PR；保留较早的 PR：${url}。作品分支仍保留，请与该代表协调。`);
+      }
+      throw new Error(`检测到同时提交或重复 PR，尚不能确认提交成功。较早的 PR：${url}。请稍后查询状态，若重复仍存在请老师处理。`);
+    }
+  }
+  return {login,lesson:target?.lesson??null,group:target?.group??null,kind:target?.kind??null,mode:repo===COURSE?'teacher-test':'student-fork',repository:repo,branch,filesVerified:targetFiles.length,changed:changed.length,pr:verified.html_url,draft:verified.draft,folder:`https://github.com/${repo}/tree/${branch}/${prefix}`};
 }
 export function testFiles(){
   return [
@@ -172,35 +191,42 @@ export function testFiles(){
     {path:'pixel.png',bytes:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64')}
   ].map(f=>({...f,sha:blobSha(f.bytes)}));
 }
-export async function main(argv=process.argv.slice(2)){
+export async function main(argv=process.argv.slice(2),api=ghApi){
   const command=argv.shift()??'help'; const opts={};
   while(argv.length){const key=argv.shift();if(!key.startsWith('--')) throw new Error('请使用 --参数 值。');if(key==='--teacher-test') opts.teacherTest=true;else{if(!argv.length)throw new Error('缺少参数值。');opts[key.slice(2)]=argv.shift();}}
-  if(command==='help') return {commands:['doctor（只读）','init（创建或确认 Fork）','test [--teacher-test]（文字、图片及草稿 PR）','plan --source <folder>（本地预览）','submit --lesson 2 --source <folder> [--summary <text>]','status（只读）'],course:COURSE};
+  const allowed={help:[],doctor:[],init:[],test:['teacherTest'],plan:['source','lesson','group','kind'],submit:['source','lesson','group','kind','summary'],status:[]};
+  if(!allowed[command]||Object.keys(opts).some(key=>!allowed[command].includes(key)))throw new Error('未知命令或参数，请执行 help。');
+  if(command==='help') return {version:'2.1.0',commands:['doctor（只读）','init（创建或确认 Fork）','test [--teacher-test]（文字、图片及草稿 PR）','plan --source <folder> [--lesson 1 --group 3 --kind individual|team]（只读预览）','submit --lesson 1 --group 3 --kind individual|team --source <folder> [--summary <text>]','status（只读）'],course:COURSE};
   if(command==='plan'){
     if(!opts.source)throw new Error('请用 --source 指定作品文件夹。');
     const p=await collectFiles(opts.source);
-    return {source:p.root,files:p.files.map(f=>({path:f.path,bytes:f.bytes.length,sha:f.sha})),skipped:p.skipped,totalBytes:p.total,limits:{files:MAX_FILES,fileMiB:20,totalMiB:50},note:'本地预览；尚未上传。更新只新增／覆盖同名文件，不删除远端旧文件。'};
+    let target;
+    if(opts.lesson!==undefined||opts.group!==undefined||opts.kind!==undefined){const context=await identity(api);target=submissionTarget(await readCourseConfig(api),{login:context.login,lesson:opts.lesson,group:opts.group,kind:opts.kind});}
+    return {source:p.root,target,files:p.files.map(f=>({path:f.path,bytes:f.bytes.length,sha:f.sha})),skipped:p.skipped,totalBytes:p.total,limits:{files:MAX_FILES,fileMiB:20,totalMiB:50},note:'只读预览；尚未上传。更新只新增／覆盖同名文件，不删除远端旧文件。'};
   }
   if(!['doctor','init','test','submit','status'].includes(command)) throw new Error('未知命令，请执行 help。');
   // Scan and reject invalid files before creating any remote state.
-  let plan,slug;
+  let plan,slug,group,config;
   if(command==='submit'){
     slug=lessonId(opts.lesson);
+    group=groupId(opts.group);
     if(!opts.source)throw new Error('请用 --source 指定作品文件夹。');
     plan=await collectFiles(opts.source);
+    if(!plan.files.some(f=>f.path==='README.md'))throw new Error('作品文件夹根目录需要 README.md。');
   }
-  const context=await identity();
-  if(command==='doctor') return {login:context.login,course:COURSE,read:'PASS',write:'NOT_TESTED',fork:context.login===COURSE.split('/')[0]?'OWNER':await optional(ghApi,'/repos/'+context.login+'/'+REPO_NAME)?'EXISTS':'NOT_CREATED',next:'执行 test 完成实际写入与 PR 测试。'};
+  const context=await identity(api);
+  if(command==='submit'){config=await readCourseConfig(api);submissionTarget(config,{login:context.login,lesson:slug,group,kind:opts.kind});}
+  if(command==='doctor') return {login:context.login,course:COURSE,read:'PASS',write:'NOT_TESTED',fork:context.login===COURSE.split('/')[0]?'OWNER':await optional(api,'/repos/'+context.login+'/'+REPO_NAME)?'EXISTS':'NOT_CREATED',next:'执行 test 完成实际写入与 PR 测试。'};
   if(command==='status'){
-    const prs=await ghApi(`/repos/${COURSE}/pulls?state=all&per_page=100&sort=updated&direction=desc`);
-    return {login:context.login,prs:prs.filter(p=>p.user.login.toLowerCase()===context.login).map(p=>({number:p.number,title:p.title,state:p.merged_at?'merged':p.state,draft:p.draft,url:p.html_url})),note:'最近 100 笔全班 PR 范围；完整记录请看 GitHub author 筛选。',all:`https://github.com/${COURSE}/pulls?q=is%3Apr+author%3A${context.login}`};
+    const prs=await listPullRequests(api);
+    return {login:context.login,prs:prs.filter(p=>p.user.login.toLowerCase()===context.login).map(p=>({number:p.number,title:p.title,state:p.merged_at?'merged':p.state,draft:p.draft,url:p.html_url})),all:`https://github.com/${COURSE}/pulls?q=is%3Apr+author%3A${context.login}`};
   }
-  const repo=await ensureFork(context,ghApi,{teacherTest:opts.teacherTest&&command==='test'});
+  const repo=await ensureFork(context,api,{teacherTest:opts.teacherTest&&command==='test'});
   if(command==='init') return {login:context.login,fork:'https://github.com/'+repo,next:'执行 test 做首次上传测试。'};
-  if(command==='test') return publish({context,repo,slug:'connection-test',files:testFiles(),test:true});
-  const result=await publish({context,repo,slug,files:plan.files,summary:opts.summary??''});
+  if(command==='test') return publish({api,context,repo,slug:'connection-test',files:testFiles(),test:true});
+  const result=await publish({api,context,repo,slug,group,kind:opts.kind,config,files:plan.files,summary:opts.summary??''});
   return {...result,skipped:plan.skipped,note:'已提交 PR；老师合并后才会出现在课程 main。远端旧文件不会自动删除。'};
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+if(isMain(import.meta.url)){
   main().then(result=>console.log(JSON.stringify(result,null,2))).catch(error=>{console.error(JSON.stringify({ok:false,message:error.message}));process.exitCode=1;});
 }

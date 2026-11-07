@@ -1,0 +1,31 @@
+name: 课堂作品总览
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [opened, synchronize, reopened, closed, edited, ready_for_review, converted_to_draft, labeled, unlabeled]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: submission-overview
+  cancel-in-progress: true
+jobs:
+  overview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: f3484134/AIBT-WORKSHOP-261107
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 生成按练习与组别排序的报告
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/build-overview.mjs --output overview.md
+      - name: 显示总览
+        run: cat overview.md >> "$GITHUB_STEP_SUMMARY"

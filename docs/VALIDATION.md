@@ -1,21 +1,34 @@
 # 验证记录
 
-## 已完成
+## 学生自报版 2.1.0（2026-11-07）
 
-- 课程 Repo 确认为公开，默认分支为 `main`。
-- 已发布的文件包含 Skill、helper、学生安装指引、完整 Prompt 清单、老师测试流程、教材与作品目录范本、可下载 ZIP。
-- Skill Creator 的 `quick_validate.py` 格式验证通过。
-- Skill ZIP 完整性检查通过，下载目录附 SHA-256。
-- 项目安装器已在独立的本地测试目录试装 Qoder 路径成功；这只验证文件安装，未代表 Qoder UI 已载入。
-- `node --test tests/workshop.test.mjs`：**11 项全部通过**。涵盖文件筛选、疑似密钥阻挡、Unicode 路径、二进制保真、Fork 初始化、重试、重交、范围隔离、并发、老师模式、错误哈希停止及测试 PNG 的格式／校验码。
-- 使用当前已登录的 GitHub Connector，实际创建老师测试分支、上传文字与 PNG、创建 [草稿测试 PR #1](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/1)，读取文字与 PNG（base64）确认内容一致，并确认 PR 指向 `main` 且为 draft。
+维护分支的 44 项课程测试已在 Node.js 20 与当前 Node.js 通过，入口为 `node tools/run-tests.mjs`。覆盖：
 
-## 尚待在上课环境验证
+- version=3/self-reported 课程配置、开放练习、实际登录账号和 1–99 组号；新账号、新组别无需名单即可提交。
+- 同组多人个人提交、个人/小组并存、一个账号跨组，个人目录不能冒用他人账号。
+- 二进制保真、重复提交复用、关闭后新版本、并发更新和错误哈希停止。
+- 作者/来源、base/head、标题、范围、重命名、删除、README、链接、大小和完整目录检查。
+- 双代表真正同时创建 PR 时只保留一单，不能双双报告成功；既有单和他人单不自动关闭，个人并行不受影响。
+- 从 main 已合并目录和分页打开 PR 自动发现组别、个人账号；正确排序、保留无名单的历史个人作品，并明确无法判断全班谁还没交。
+- 维护 PR 不计入作业或复用，测试仅运行根 tests/，不执行学生作品中的测试。
+- Qoder 中文/空格项目路径安装、完整 scripts/references、已有版本拒绝覆盖。
+- WorkBuddy ZIP 独立解压运行、逐文件字节一致、可重复打包和 SHA-256。
 
-- WorkBuddy、Qoder 或其他学生实际使用的版本能否识别／载入 Skill。
-- 各产品 Connector 是否提供 Fork、分支、该作品格式的上传与 PR 工具。
-- 学生账号的 Fork 与跨仓库 PR；老师无法 Fork 自己，因此老师分支测试不涵盖这一段。
-- CLI helper 的实际 gh 登录及真实 GitHub API 连接；本地行为测试使用模拟 API，真实老师上传测试走 Connector。
-- 教室网络下的 GitHub 注册、授权及 `api.github.com` 连接。
+新版 Skill 已通过九项独立消费情景：无需成员/代表名单、首次第八组、跨组、缺类型只补问类型、总览推断边界、真实账号个人目录、另一代表已有 PR，以及 Qoder/WorkBuddy 分发。旧说明“老师登记”已清理为课程配置与开放练习核对。
 
-请依 [TEACHER.md](TEACHER.md) 完成一轮真实学生角色测试，再将相同步骤发给全班。首次测试 Prompt 会生成小型测试资料，不需先准备正式作业。
+Linux/Windows Node 20 自动测试在学生 Fork 运行，具体记录见维护 PR 的远端验证链接。老师仓库的新分组检查和课堂总览须合并后启用，本地测试不能证明尚未部署的工作流已运行。
+
+## 已有真实连接测试
+
+- 老师 Connector：[草稿 PR #1](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/1)，文字、PNG 与 PR 已读回；不涵盖学生 Fork。
+- 学生 CLI：[草稿 PR #2](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/2)，账号 yuhsiuli，实际 Fork、文字/PNG、跨仓库草稿 PR 均已读回。
+
+这些记录验证已有连接通道，不等于新版自报组别正式作业已在所有产品完成试交。测试 PR 保留草稿，不自动合并或删除。
+
+## 仍需课堂环境验收
+
+- 学生无需名单，自行填写组别并分别提交个人/共同作品，核对远端目录、二进制和 Checks。
+- 在实际 Qoder/WorkBuddy 版本中验证 Skill UI、Connector 能力和本人账号授权。
+- 在教室网络测试 GitHub 注册及 api.github.com 连接。
+
+按 [老师管理与验收](TEACHER.md) 完成提交、修改重交和合并后补交，再向全班分发相同版本。

@@ -13,6 +13,12 @@
 
 GitHub CLI **不是 Skill 的必要条件**。使用 helper 时才需要 Node.js 20+ 和 gh。Skill 是操作流程；Connector／CLI 才是账号授权与上传通道，不能用 Skill 绕过登录。
 
+## 分组版 2.1.0
+
+Qoder 与 WorkBuddy 使用同一个 Skill，Connector 路线也必须读取老师 main 的 course.json，确认开放练习、自报组号（1–99）、个人/小组类型及实际登录账号。无需老师维护名单；不因未登记账号或新组别而拒绝。组别关系由老师审核 PR 确认。Qoder 项目安装和 WorkBuddy ZIP 均包含 scripts/workshop.mjs、scripts/course.mjs 与 references/transports.md；不引入 npm 依赖。
+
+维护测试覆盖带中文/空格路径的项目安装、拒绝覆盖、独立 ZIP 解压后运行 helper 和完整性校验。两款产品实际版本的 UI 载入、Connector 授权与课堂网络仍须按 [老师验收步骤](TEACHER.md) 现场验证。
+
 GitHub 官方 MCP 有 Fork、分支、文字文件和 PR 工具；二进制文件不能直接塞进仅收文字 content 的工具。可用 Git blob base64 API 的 connector 或 CLI helper 才能保留这些格式。
 
 官方来源：

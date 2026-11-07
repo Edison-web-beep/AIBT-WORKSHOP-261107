@@ -1,6 +1,6 @@
 # 安装提交 Skill
 
-Skill 名称固定为 `aibt-workshop`。同一份 Skill 包含初始化 Fork、首次连接测试与日后提交，不用分别装多个 Skill。
+Skill 名称固定为 `aibt-workshop`，当前分组版为 **2.1.0**。同一份 Skill 包含初始化 Fork、首次连接测试与日后按练习、组别提交，不用分别装多个 Skill。Qoder 与 WorkBuddy 使用同一份 scripts、references 和规则。
 
 ## WorkBuddy：下载并导入
 
@@ -16,7 +16,7 @@ Skill 名称固定为 `aibt-workshop`。同一份 Skill 包含初始化 Fork、�
 先开一个课程项目文件夹，再复制下文。它会将 Skill 装在该项目，不修改其他课程或个人全局设置。
 
 ```text
-请帮我安装 AIBT 课堂提交 Skill。
+请帮我安装 AIBT 课堂提交 Skill 2.1.0（分组版）。
 来源：https://github.com/f3484134/AIBT-WORKSHOP-261107
 只安装 skills/aibt-workshop 这个文件夹，保留 scripts 和 references。
 请识别当前工具：Qoder 放 .qoder/skills/aibt-workshop，
@@ -57,3 +57,7 @@ Qoder 可用 `/aibt-workshop` 明确调用；Codex 可用 `$aibt-workshop`；Cla
 项目内安装只对该项目有效；请在同一个课程项目中完成练习。WorkBuddy／Cowork 的界面导入范围依产品为准。
 
 上课前可统一下载一次 ZIP，由老师通过课程群组或 U 盘分发；文件不含任何账号密码。这能减少 GitHub 下载不稳对安装的影响，实际提交仍需要连到 GitHub API。
+
+从旧版升级时先读取现有 SKILL.md 的 metadata.version；没有版本字段的属于旧版。不要直接覆盖：Qoder/Codex/Claude 项目可先把原 Skill 备份到项目的 `.aibt-local/skill-backups/`，再使用项目安装器安装新版；WorkBuddy 按技能界面的更新或重新导入流程操作。保留完整 scripts（包括 course.mjs）和 references，重新打开对话，并让 Agent 报告已读取版本 2.1.0。
+
+正式提交示例：「使用 aibt-workshop，提交练习一第三组的个人作品，作品在当前选中的文件夹。」学生自行填写组号，工具读取实际登录账号，无需老师预建名单或组别目录。完整规则见 [统一提交规则](SUBMISSION-RULES.md)。

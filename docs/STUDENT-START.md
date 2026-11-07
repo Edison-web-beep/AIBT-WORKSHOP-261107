@@ -1,49 +1,38 @@
 # 学生三步开始
 
-## 1. 注册账号
+## 1. 注册自己的账号
 
-到 https://github.com/signup 注册个人账号并验证 Email。记住自己的账号名称。密码、验证码、邮件验证与登录授权请自己完成，不要发给 Agent 或老师。
+在 https://github.com/signup 注册 GitHub 个人账号并验证邮箱，密码、验证码及授权由本人完成，不发给 Agent。提交时自己填写课堂组号，不用等待老师建立成员或代表名单；账号由工具读取实际登录结果。
 
-## 2. 安装一次 Skill
+同组可以多人各交个人作品，也可以由代表交一份共同作品，两种可以同时进行；同一账号也可以参加或代表多个组，老师在 PR 中核对。
 
-下载 [aibt-workshop.zip](../downloads/aibt-workshop.zip?raw=true)，依 [安装方法](INSTALL.md) 导入自己的工具。WorkBuddy 可从「技能」上传 ZIP；Qoder 可请 Agent 帮忙放进项目。
+## 2. 安装 Skill 2.1.0
 
-这不是浏览器版 ChatGPT 上传附件；要在能读取作品文件夹、使用 Skills 与 GitHub 工具的 Agent 环境操作。
+按 [安装方法](INSTALL.md) 操作。Qoder 项目使用 .qoder/skills/aibt-workshop；WorkBuddy 从技能界面导入 [ZIP](../downloads/aibt-workshop.zip?raw=true)。保留 scripts/references，重新打开对话。需要能读取本机作品目录和调用 GitHub 的 Agent 环境。
 
-## 3. 第一次就测到能提交
-
-在 Agent 中粘贴：
+## 3. 首次连接测试
 
 ```text
-使用 aibt-workshop，帮我初始化 AIBT-WORKSHOP-261107 课程并完成首次连接测试。
-优先使用已连接的 GitHub；能力不足时引导我完成最少的必要设置。
-请确认实际登录账号，创建或确认我的 Fork，实际上传测试文字与图片，
-创建草稿测试 PR，读取并验证后给我 PR 链接及每一步的通过状态。
+使用 aibt-workshop，帮我初始化课程并完成首次连接测试。
+确认实际登录账号、Fork，上传生成的文字与 PNG，创建或复用草稿 PR，
+读回验证并给我每一步结果。优先已有 Connector，能力不足时启用 CLI。
 ```
 
-首次可能出现两种本人操作：
-
-- 连接器／GitHub CLI 打开 GitHub 授权页，请自己完成。
-- 连接器没有 Fork 工具时，点 [创建自己的 Fork](https://github.com/f3484134/AIBT-WORKSHOP-261107/fork)，按 Create fork 后回来告诉 Agent「Fork 已完成，继续测试」。
-
-收到 **草稿测试 PR 链接**，而且文字、图片、PR 都验证通过，才算完整成功。只显示「可连 GitHub」仍未完成测试。测试文件是 Agent 生成的小文件，不会扫描或上传你的作品。
-
-## 取得练习三材料
-
-前往 [练习三：访谈笔记分析](../lessons/lesson-03/README.md)，下载 Word 原文件，或复制页面上的 Prompt 让 Agent 准备材料。页面也提供方便 Agent 读取的 Markdown 文字版。
+需要时本人完成浏览器授权。只缺 Fork 可先点 [创建自己的 Fork](https://github.com/f3484134/AIBT-WORKSHOP-261107/fork)。测试不扫描作品；文字、图片及草稿 PR 均验证后才算完整成功。
 
 ## 正式交作业
 
-把这次要公开的作品放在一个独立文件夹，然后说：
+作品集中在独立文件夹，根部放 README.md，再选择符合自己的说法：
 
 ```text
-提交第 2 课作业，作品在这个文件夹：〈选取或粘贴作品文件夹路径〉。
+使用 aibt-workshop，提交练习一第三组的个人作品，作品在当前选中的文件夹。
+使用 aibt-workshop，代表第三组提交练习一的小组作品，作品在当前选中的文件夹。
 ```
 
-不用自己建学生目录、不用每次 Fork、不用记 Git 指令。想改进后重交，就说「更新第 2 课作业，作品在……」。
+也可说当前项目内可定位的文件夹名，或提供完整路径。不必自己安排 GitHub 目录。个人作品放到本组 individual/<账号>/，共同作品放 team/，互不覆盖。
 
-提交完成后留存 PR 链接。老师还没合并时，在 [Pull requests](https://github.com/f3484134/AIBT-WORKSHOP-261107/pulls) 看作品；合并后在 [submissions](../submissions/) 看。
+练习必须是老师已开放的练习，组号范围为 1–99。首次出现的组别可直接提交，文件夹由工具安排；请如实填写，老师审核 PR 时确认。更新时说明相同练习、组号和个人/小组类型，复用该作品仍打开的 PR；合并后补交创建新版本。小组共同作品已有其他代表的未关闭 PR 时，先请老师处理。
 
-一次最多 200 个文件、单个文件 20 MiB、合计 50 MiB。大型音视频文件可改放自己的公开分享链接，并写入作品 README。文件重新命名后旧文件会保留；需要移除时要另行指定。
+每份个人/小组作品最多 200 文件、单个 20 MiB、总计 50 MiB，仅提交可公开内容；改名后远端旧文件保留，不自动删除。成功后留存作品和 PR 链接，老师合并后才进入 main。
 
-更多情境见 [完整 Prompt 清单](PROMPTS.md)。
+[提交规则](SUBMISSION-RULES.md) · [Prompt 清单](PROMPTS.md) · [练习三材料](../lessons/lesson-03/README.md)

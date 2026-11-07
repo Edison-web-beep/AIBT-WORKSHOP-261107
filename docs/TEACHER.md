@@ -1,67 +1,53 @@
-# 老师管理与本地测试
+# 老师管理与验收
 
-## 课程设置
+## 开课前准备
 
-- 主仓库：`f3484134/AIBT-WORKSHOP-261107`，Public，默认分支 `main`。
-- 学生使用自己的 GitHub 账号 Fork → 自己的作业分支 → 向老师 main 建 PR。
-- 不需要 Organization、团队、学生名单或逐一邀请 Collaborator。没有写入权限的学生不能直接改老师 main。
-- 老师检查 PR 的 Files changed，只接受该生课次目录，确认后合并。测试 PR 保留草稿即可，无须合并。
-- 不要给学生老师的账号密码或共用 Token。若 Connector 使用「选定仓库」授权，新的个人 Fork 可能也需加入学生自己的授权范围。
+主仓库为 f3484134/AIBT-WORKSHOP-261107，公开、默认分支 main。学生使用自己的 Fork 和 PR，不需要老师仓库写入权限或共享密码。
 
-当前没有安装 GitHub App、自订伺服器、Actions 自动合并或自动执行学生程式的需求。公开 Fork + PR 已能完成第一堂课的提交。
+1. 合并本更新，确认 Actions 已启用。
+2. [course.json](../course.json) 已列出 4 个练习，并使用 self-reported 自报模式；不包含成员或代表名单。
+3. 统一分发 Skill 2.1.0，让学生完成首次连接测试。
 
-可选的加强设置：Settings → Branches 或 Rules → 对 `main` 要求经由 PR 才能合并。若启用 required approvals，只有老师一人时请确定老师仍能合并学生 PR，不要设置需要额外教师才能通过的规则。实际是否已启用，以 GitHub 设置页为准；本文件不表示规则已配置。
+**老师无需建立各组账号名单，也无需预建各组文件夹。** 学生提交时填写课堂组号（1–99）和个人/小组类型，工具读取实际登录账号，自动整理目录。首次出现的新组别同样可以提交。同一账号可跨组，也可同时交个人与共同作品。
 
-## 目录与课次
+自动检查能验证实际提交账号和文件范围，不能证明学生确实属于该组或获得组内代表资格；这些由老师审核 PR 时确认。填错组号时先处理错组 PR，再按正确组号重交；已合并作品的移动或清理由老师审阅维护 PR，不自动迁移。
 
-`lessons/lesson-template/` 是教材格式范本，`templates/submission/` 是学生作品说明范本，没有默认正式课程内容。正式教材可放 `lessons/lesson-01/`、`lessons/lesson-02/` 等。
+## 两类作品分别归档
 
-学生作品由 Skill 自动放到：
+| 方式 | 作品位置 | 并行与重交 |
+|---|---|---|
+| 个人 | submissions/lesson-NN/group-NN/individual/<账号>/ | 每人独立 PR，同组可多人并行 |
+| 小组代表 | submissions/lesson-NN/group-NN/team/ | 每组每练习一个待审 PR，换代表前处理原单 |
 
-```text
-submissions/
-  student-github-login/
-    lesson-01/
-      README.md
-      ...作品原始文件
-    lesson-02/
-      ...
-```
+PR 标题分别为 [练习NN][第NN组][个人] <账号>、[练习NN][第NN组][小组] <账号>。修改复用同一作品的打开 PR，关闭/合并后补交使用 -r2 等版本。
 
-每堂课可以直接对学生说：「交第 2 课作业」，不需要您先创建每位学生的文件夹。学生可用 GitHub 账号，不收集真名或手机。
+多位代表同时提交时，Skill 在创建前后复查，以 PR 编号较早的一单为准，只关闭本次新建的较晚重复单，保留上传分支并给出链接。无法确认时学生会收到待处理提示，老师核对并协调；既有 PR 不自动关闭。
 
-## 建议的第一轮测试
+## 审阅与维护
 
-1. 在您实际要教学的 WorkBuddy 或 Qoder 中，创建一个空的本地课程项目。
-2. 依 [INSTALL.md](INSTALL.md) 导入 ZIP 或安装项目 Skill。
-3. 粘贴 [PROMPTS.md](PROMPTS.md) 的「老师本机试跑」Prompt。老师账号无法 Fork 自己，因此这一步验证的是老师分支的文字／图片／草稿 PR。
-4. 准备第二个 GitHub 账号，或请一位学生在自己的电脑重做首次测试。这一步才涵盖 **学生账号 Fork 与跨仓库 PR**。
-5. 创建小作品文件夹，放 `README.md`、一张图片与一份 PDF／PPTX，预览后提交第 1 课。
-6. 同课改一个文件再提交，确认更新同一个仍打开的 PR。
-7. 老师合并后再补交，确认开新的 `-r2` 分支和 PR。
-8. 在教室实际网络重测一次，特别确认 `api.github.com`，不只看 GitHub 首页能否打开。
+自动检查验证作者、来源、开放练习、自报组号、类型、范围、README、链接与大小。检查及总览使用可信代码，权限只读，不执行学生作品。课程测试入口为 `node tools/run-tests.mjs`，只运行根 tests/。
 
-验收表：
+课程维护 PR（课程配置、教材、Skill、工作流及明确要求的文件清理）请由老师添加 course-maintenance 标签，再人工审阅全部差异。维护 PR 不计入作业、不阻挡重复检查，也不复用为作业。
 
-| 阶段 | 成功证据 |
-|---|---|
-| Skill 能载入 | Agent 找到并读取 aibt-workshop，而非临时猜 Git 操作 |
-| 身分正确 | 显示本人 GitHub login |
-| 课程可读 | 读取到本课程 main |
-| 学生 Fork | 学生账号下的 Fork parent 指向本课程 |
-| 真实上传 | 文字与 PNG 的远端 Git blob SHA 与本地一致 |
-| PR | 指向老师 main，head 是该生分支，测试为 draft |
-| 提交／重交 | 第一次有 PR；重交更新同一个 open PR |
-| 观摩 | 同学可从 PR 或 submissions 取得作品链接 |
+建议 main 要求 PR 审阅及分组检查通过；本更新不修改仓库保护设置。教师另一个账号可以 Approve 和合并由学生测试账号创建的维护 PR；GitHub 不允许作者批准自己的 PR。
 
-## 课堂操作
+## 课堂总览
 
-开课前把 [STUDENT-START.md](STUDENT-START.md) 与 Skill ZIP 发给学生。GitHub 新账号的注册／Email 验证最好提早完成。
+[课堂作品总览](https://github.com/f3484134/AIBT-WORKSHOP-261107/actions/workflows/submission-overview.yml)最新成功运行的 Summary 自动发现已合并目录和打开的正式 PR，按练习、组别、类型和账号排列，分别显示个人与共同作品、暂无提交、草稿、待审和已合并。没有提交记录时不要求建名单。
 
-学生正式提交后，您可从 [PR 清单](https://github.com/f3484134/AIBT-WORKSHOP-261107/pulls) 审阅；标题 `[作业]` 是正式提交，`[连接测试]` 是草稿测试。当堂相互观摩不必等全部合并，PR 本身已公开。
+**没有完整名单，无法判断全班谁还没交。** “暂无提交”仅表示已出现组别在该练习/类型下尚无记录；不能把共同作品算成每个人都已交，也不能据此认定某人缺交。
 
-不必每个学生都安装 gh。优先让已有 Connector 通过完整测试；仅对能力不足的环境启用 CLI 备用方案。不同产品的 Connector 名称相同，也可能支持不同操作。
+PR 更新/关闭/合并和 main 更新会刷新，也可手动 Run workflow。总览写入 Actions 摘要，不自动推送 main；本地可用 `node tools/build-overview.mjs --output overview.md` 生成 Markdown。新分组检查和总览须合并后启用。
 
-## 本地 helper 验证
+## Qoder / WorkBuddy 验收
 
-维护者可在仓库根目录执行 `node --test tests/workshop.test.mjs`。这是模拟 GitHub API 的行为测试，涵盖内容哈希、二进制、Fork 重复初始化、重试、重交、并发与路径隔离；不能代替学生电脑的真实连接测试。
+统一分发 [Skill 2.1.0 ZIP](../downloads/aibt-workshop.zip?raw=true)。Qoder 安装到课程项目 .qoder/skills/aibt-workshop，WorkBuddy 从技能界面导入，保留 scripts/references 并重开对话。
+
+1. 学生账号完整测试 Fork、文字/PNG、跨仓库草稿 PR；老师测试无法涵盖学生 Fork。
+2. 无需任何名单，用两个学生账号分别提交同组个人作品，再由其中一人提交共同作品。
+3. 首次填写第八组，验证自动归档；同一账号可提交不同组及两类作品。
+4. 改文件重交，确认复用相同类型的原单；合并后补交使用新版本。
+5. 验证冒用别人的账号目录、跨本次目标目录或填入未开放练习被拒绝。
+6. 在实际 Qoder/WorkBuddy UI、Connector 和教室网络中验收。能力不足时使用 Node.js 20+ 与 gh；本地打包测试不代表产品 UI 已验证。
+
+旧版账号目录不会自动移动或删除，现有已安装 Skill 与连接测试 PR 保留。维护命令：`node tools/run-tests.mjs`、`python3 tools/package-skill.py`、`git diff --check`。Skill 修改后同步 ZIP 和 SHA-256。
