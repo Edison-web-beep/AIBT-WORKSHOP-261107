@@ -25,7 +25,7 @@ https://github.com/f3484134/AIBT-WORKSHOP-261107/blob/main/lessons/lesson-03/REA
 按照老师的课堂要求完成分析后，将要分享的分析结果和作品说明放在一个独立文件夹。本练习的提交目录编号为 `lesson-03`。
 
 ```text
-使用 aibt-workshop，提交练习三第〈组号〉组，作品在当前选中的文件夹。
+使用 aibt-workshop，提交练习三第〈组号〉组的个人作品，作品在当前选中的文件夹。
 ```
 
 提交成功后，保留 Agent 返回的 PR 链接。更多操作见 [完整 Prompt 清单](../../docs/PROMPTS.md)。

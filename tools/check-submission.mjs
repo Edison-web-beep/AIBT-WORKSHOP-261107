@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import {ghApi} from '../skills/aibt-workshop/scripts/workshop.mjs';
-import {COURSE,readCourseConfig,listPullRequests,validateSubmission,isMain} from '../skills/aibt-workshop/scripts/course.mjs';
+import {COURSE,readCourseConfig,listPullRequests,validateSubmission,isMain,isMaintenancePR} from '../skills/aibt-workshop/scripts/course.mjs';
 
 export async function checkPullRequest(api,number){
   if(!Number.isSafeInteger(number)||number<1)throw new Error('请指定有效的 PR 编号。');
   const pr=await api(`/repos/${COURSE}/pulls/${number}`);
-  if(pr.labels?.some(label=>label.name==='course-maintenance'))return validateSubmission({pr});
+  if(isMaintenancePR(pr))return validateSubmission({pr});
   const config=await readCourseConfig(api,pr.base.sha);
   const files=[];
   for(let page=1;page<=3;page++){

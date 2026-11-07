@@ -36,27 +36,35 @@ export function validateConfig(config){
     if(typeof item.title!=='string'||!item.title.trim()||item.title.length>100||/[\r\n]/.test(item.title))throw new Error('练习名称不能为空或包含换行。');
     return {id:item.id,title:item.title.trim()};
   }).sort((a,b)=>a.id.localeCompare(b.id));
-  const groups=unique(config.groups,groupId,'组别').map(item=>({id:item.id,representative:item.representative===null?null:normalizeLogin(item.representative)})).sort((a,b)=>a.id.localeCompare(b.id));
+  const accounts=(values,label)=>{
+    if(!Array.isArray(values))throw new Error(`课程登记的 ${label} 必须是 GitHub 账号数组。`);
+    const result=values.map(normalizeLogin);
+    if(new Set(result).size!==result.length)throw new Error(`${label} 含重复账号。`);
+    return result.sort();
+  };
+  const groups=unique(config.groups,groupId,'组别').map(item=>({id:item.id,members:accounts(item.members,'members'),representatives:accounts(item.representatives,'representatives')})).sort((a,b)=>a.id.localeCompare(b.id));
   return {version:2,lessons,groups};
 }
-export function submissionTarget(config,{login,lesson,group}){
+export function submissionTarget(config,{login,lesson,group,kind}){
   const roster=validateConfig(config),user=normalizeLogin(login),lessonKey=lessonId(lesson),groupKey=groupId(group);
   if(!roster.lessons.some(item=>item.id===lessonKey))throw new Error(`老师尚未登记练习 ${lessonKey}。`);
   const team=roster.groups.find(item=>item.id===groupKey);
   if(!team)throw new Error(`老师尚未登记组别 ${groupKey}，请先请老师补充 course.json。`);
-  if(!team.representative)throw new Error(`${groupKey} 尚未登记提交代表，请先请老师填写 course.json；连接测试仍可执行。`);
-  if(team.representative!==user)throw new Error(`当前账号 ${user} 不是 ${groupKey} 的登记提交代表。`);
-  return {login:user,lesson:lessonKey,group:groupKey,prefix:`submissions/${lessonKey}/${groupKey}/`,slug:`${lessonKey}/${groupKey}`,title:`[练习${lessonKey.slice(-2)}][第${groupKey.slice(-2)}组] ${user}`};
+  if(!['individual','team'].includes(kind))throw new Error('提交类型请用 individual（个人）或 team（小组代表）。');
+  const allowed=kind==='individual'?team.members:team.representatives,role=kind==='individual'?'成员':'代表';
+  if(!allowed.length)throw new Error(`${groupKey} 尚未登记${role}账号，请先请老师填写 course.json；连接测试仍可执行。`);
+  if(!allowed.includes(user))throw new Error(`当前账号 ${user} 不是 ${groupKey} 的授权${role}。`);
+  return {login:user,lesson:lessonKey,group:groupKey,kind,prefix:`submissions/${lessonKey}/${groupKey}/${kind}/`+(kind==='individual'?user+'/':''),slug:`${lessonKey}/${groupKey}/${kind}`,title:`[练习${lessonKey.slice(-2)}][第${groupKey.slice(-2)}组][${kind==='individual'?'个人':'小组'}] ${user}`};
 }
 export function parseSubmissionBranch(branch){
   if(typeof branch!=='string')return null;
-  const match=branch.match(/^aibt\/([a-z\d-]+)\/(lesson-\d{2})\/(group-\d{2})(?:-r([1-9]\d?))?$/);
+  const match=branch.match(/^aibt\/([a-z\d-]+)\/(lesson-\d{2})\/(group-\d{2})\/(individual|team)(?:-r([1-9]\d?))?$/);
   if(!match)return null;
   try{
     if(lessonId(match[2])!==match[2]||groupId(match[3])!==match[3])return null;
-    const revision=match[4]?Number(match[4]):1;
-    if(match[4]&&revision<2)return null;
-    return {login:normalizeLogin(match[1]),lesson:match[2],group:match[3],revision};
+    const revision=match[5]?Number(match[5]):1;
+    if(match[5]&&revision<2)return null;
+    return {login:normalizeLogin(match[1]),lesson:match[2],group:match[3],kind:match[4],revision};
   }catch{return null;}
 }
 export async function readCourseConfig(api,ref='main'){
@@ -79,9 +87,10 @@ export async function listPullRequests(api,state='all'){
 export function matchingGroupPulls(prs,target){
   return prs.filter(pr=>{
     const parsed=parseSubmissionBranch(pr.head?.ref);
-    return pr.state==='open'&&parsed?.lesson===target.lesson&&parsed.group===target.group;
+    return !isMaintenancePR(pr)&&pr.state==='open'&&parsed?.lesson===target.lesson&&parsed.group===target.group&&(!target.kind||parsed.kind===target.kind)&&(!(target.kind==='individual'&&target.login)||parsed.login===target.login);
   });
 }
+export function isMaintenancePR(pr){return Boolean(pr.labels?.some(label=>(typeof label==='string'?label:label.name)==='course-maintenance'));}
 
 export function validWorkPath(relative){
   if(typeof relative!=='string'||/[\\\x00-\x1f]/.test(relative))return false;
@@ -93,20 +102,20 @@ export function validWorkPath(relative){
 export function validateWorkTree(tree,prefix,{requireReadme=true}={}){
   if(!tree||tree.truncated||!Array.isArray(tree.tree))throw new Error('远端目录树被截断或无法完整读取。');
   const entries=tree.tree.filter(entry=>entry.path.startsWith(prefix)&&entry.type!=='tree');
-  if(!entries.length||entries.length>MAX_FILES)throw new Error('每组每个练习最多 200 个作品文件。');
+  if(!entries.length||entries.length>MAX_FILES)throw new Error('每份个人作品或小组共同作品最多 200 个文件。');
   let total=0;
   for(const entry of entries){
     if(entry.type!=='blob'||!['100644','100755'].includes(entry.mode)||!validWorkPath(entry.path.slice(prefix.length)))throw new Error('作品含不支持路径、隐藏配置或符号链接。');
     if(!Number.isSafeInteger(entry.size)||entry.size<0||entry.size>MAX_FILE)throw new Error('作品单个文件超过 20 MiB 或大小无法确认。');
     total+=entry.size;
   }
-  if(total>MAX_TOTAL)throw new Error('本组本练习的作品总计超过 50 MiB。');
+  if(total>MAX_TOTAL)throw new Error('本次个人作品或小组共同作品总计超过 50 MiB。');
   if(requireReadme&&!entries.some(entry=>entry.path===prefix+'README.md'))throw new Error('本组作品根目录缺少 README.md。');
   return {files:entries.length,totalBytes:total};
 }
 export function validateSubmission({config,pr,files,tree,openPulls=[]}){
   if(pr.base?.ref!=='main'||pr.base.repo?.full_name!==COURSE)throw new Error('PR 必须指向老师课程的 main。');
-  if(pr.labels?.some(label=>(typeof label==='string'?label:label.name)==='course-maintenance'))return {kind:'maintenance',note:'老师已标记课程维护，请人工审阅全部差异。'};
+  if(isMaintenancePR(pr))return {kind:'maintenance',note:'老师已标记课程维护，请人工审阅全部差异。'};
   const login=normalizeLogin(pr.user?.login),headRepo=pr.head?.repo?.full_name?.toLowerCase();
   if(headRepo!==login+'/'+REPO_NAME.toLowerCase()&&!(login===COURSE.split('/')[0]&&headRepo===COURSE.toLowerCase()))throw new Error('PR 来源仓库必须属于实际提交账号。');
   if(!Array.isArray(files)||files.length===0||files.length!==pr.changed_files||files.length>MAX_FILES)throw new Error('PR 文件清单不完整或超过 200 个文件。');
@@ -119,9 +128,9 @@ export function validateSubmission({config,pr,files,tree,openPulls=[]}){
   }else{
     const parsed=parseSubmissionBranch(pr.head.ref);
     if(!parsed||parsed.login!==login)throw new Error('请升级到分组版 Skill，或请老师为课程维护 PR 添加 course-maintenance 标签。');
-    target=submissionTarget(config,{login,lesson:parsed.lesson,group:parsed.group});
+    target=submissionTarget(config,{login,lesson:parsed.lesson,group:parsed.group,kind:parsed.kind});
     if(pr.title!==target.title)throw new Error(`PR 标题请统一为：${target.title}`);
-    if(matchingGroupPulls(openPulls,target).some(other=>other.number!==pr.number))throw new Error('本组本练习已有其他打开的 PR，请处理重复提交。');
+    if(matchingGroupPulls(openPulls,target).some(other=>other.number!==pr.number))throw new Error('该作品已有其他打开的 PR，请处理重复提交。');
   }
   for(const file of files){
     if(!file.filename.startsWith(target.prefix)||file.previous_filename&&!file.previous_filename.startsWith(target.prefix)||file.status==='removed')throw new Error('PR 含跨组、跨练习、其他文件变更或删除。');
@@ -136,7 +145,7 @@ export function validateSubmission({config,pr,files,tree,openPulls=[]}){
     const names=tree.tree.filter(entry=>entry.path.startsWith(target.prefix)&&entry.type!=='tree').map(entry=>entry.path.slice(target.prefix.length)).sort();
     if(names.length!==2||names[0]!=='connection.md'||names[1]!=='pixel.png')throw new Error('连接测试需要文字和 PNG 两个生成文件。');
   }
-  return {kind:testBranch?'connection-test':'submission',login,lesson:target.lesson??null,group:target.group??null,...checked};
+  return {kind:testBranch?'connection-test':'submission',submissionKind:target.kind??null,login,lesson:target.lesson??null,group:target.group??null,...checked};
 }
 
 function markdownText(value){
@@ -145,23 +154,30 @@ function markdownText(value){
 export function renderOverview({config,tree,prs}){
   const roster=validateConfig(config);
   if(!tree||tree.truncated||!Array.isArray(tree.tree))throw new Error('远端目录树被截断，不能生成完整总览。');
-  const lines=['# 课堂作品提交总览','','按练习编号、组号排序。待审或草稿表示已打开 PR，仍需查看检查结果并由老师审阅。','','| 练习 | 组别 | 提交代表 | 状态 | 已合并作品 | 提交单 |','|---|---|---|---|---|---|'];
+  const lines=['# 课堂作品提交总览','','按练习、组号、提交类型和账号排序。待审或草稿仍需查看检查结果并由老师审阅。','','| 练习 | 组别 | 类型 | 提交账号 | 状态 | 已合并作品 | 提交单 |','|---|---|---|---|---|---|---|'];
   for(const lesson of roster.lessons){
     for(const group of roster.groups){
-      const prefix=`submissions/${lesson.id}/${group.id}/`;
-      const merged=tree.tree.some(entry=>entry.path===prefix+'README.md'&&entry.type==='blob');
-      const pending=matchingGroupPulls(prs,{lesson:lesson.id,group:group.id});
-      let state=group.representative?(merged?'已合并':'未交'):'待登记';
-      if(pending.length>1)state='重复提交，待处理';
-      else if(pending.length){
-        const pr=pending[0],parsed=parseSubmissionBranch(pr.head.ref);
-        const registered=group.representative===pr.user?.login?.toLowerCase()&&parsed.login===group.representative&&pr.head.repo?.full_name?.toLowerCase()===`${group.representative}/${REPO_NAME}`.toLowerCase()&&pr.base?.ref==='main'&&pr.base.repo?.full_name===COURSE;
-        state=registered?(pr.draft?'草稿':'待审'):'代表身份待核对';
-        if(merged)state+='（已有版本）';
+      const slots=[...group.members.map(login=>({kind:'individual',login,allowed:[login]})),{kind:'team',login:null,allowed:group.representatives}];
+      if(!group.members.length)slots.unshift({kind:'individual',login:null,allowed:[]});
+      const unknown=new Set(matchingGroupPulls(prs,{lesson:lesson.id,group:group.id,kind:'individual'}).map(pr=>parseSubmissionBranch(pr.head.ref).login).filter(login=>!group.members.includes(login)));
+      for(const login of [...unknown].sort())slots.push({kind:'individual',login,allowed:[]});
+      for(const slot of slots){
+        const prefix=`submissions/${lesson.id}/${group.id}/${slot.kind}/`+(slot.kind==='individual'&&slot.login?slot.login+'/':'');
+        const merged=Boolean((slot.kind==='team'||slot.login)&&tree.tree.some(entry=>entry.path===prefix+'README.md'&&entry.type==='blob'));
+        const pending=slot.kind==='individual'&&!slot.login?[]:matchingGroupPulls(prs,{lesson:lesson.id,group:group.id,kind:slot.kind,login:slot.login});
+        let state=slot.allowed.length?(merged?'已合并':'未交'):'待登记';
+        if(pending.length>1)state='重复提交，待处理';
+        else if(pending.length){
+          const pr=pending[0],parsed=parseSubmissionBranch(pr.head.ref),author=pr.user?.login?.toLowerCase();
+          const registered=slot.allowed.includes(author)&&parsed.login===author&&pr.head.repo?.full_name?.toLowerCase()===`${author}/${REPO_NAME}`.toLowerCase()&&pr.base?.ref==='main'&&pr.base.repo?.full_name===COURSE;
+          state=registered?(pr.draft?'草稿':'待审'):'账号权限待核对';
+          if(merged)state+='（已有版本）';
+        }
+        const links=pending.map(pr=>`[PR #${Number(pr.number)}](https://github.com/${COURSE}/pull/${Number(pr.number)})`).join('、')||'—';
+        const work=merged?`[查看作品](https://github.com/${COURSE}/tree/main/${prefix})`:'—';
+        const accounts=slot.login?'@'+slot.login:slot.allowed.map(login=>'@'+login).join('、')||'待登记';
+        lines.push(`| ${lesson.id} | ${group.id} | ${slot.kind==='individual'?'个人':'小组'} | ${accounts} | ${state} | ${work} | ${links} |`);
       }
-      const links=pending.map(pr=>`[PR #${Number(pr.number)}](https://github.com/${COURSE}/pull/${Number(pr.number)})`).join('、')||'—';
-      const work=merged?`[查看作品](https://github.com/${COURSE}/tree/main/${prefix})`:'—';
-      lines.push(`| ${lesson.id} | ${group.id} | ${group.representative?'@'+group.representative:'待登记'} | ${state} | ${work} | ${links} |`);
     }
   }
   if(!roster.groups.length)lines.push('','尚未配置组别，请老师先填写 course.json。');

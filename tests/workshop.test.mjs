@@ -28,7 +28,7 @@ function github(){
     if(tail.startsWith('/pulls/')&&method==='GET')return store.prs.find(p=>p.number===Number(tail.split('/').pop()));
     if(tail==='/pulls'&&method==='POST'){
       const branch=body.head.split(':').slice(1).join(':');
-      const pr={number:store.prs.length+1,state:'open',draft:body.draft,title:body.title,base:{ref:body.base},head:{ref:branch,label:body.head,repo:{full_name:body.head.startsWith('f3484134:')?COURSE:'student/'+REPO_NAME}},html_url:'https://github.com/'+COURSE+'/pull/'+(store.prs.length+1)};
+      const pr={number:store.prs.length+1,state:'open',draft:body.draft,title:body.title,base:{ref:body.base},head:{ref:branch,label:body.head,repo:{full_name:body.head.split(':')[0]+'/'+REPO_NAME}},html_url:'https://github.com/'+COURSE+'/pull/'+(store.prs.length+1)};
       store.prs.push(pr);return pr;
     }
     if(tail==='/git/refs'&&method==='POST'){
@@ -57,9 +57,9 @@ function github(){
   return {api,store};
 }
 const context={login:'student',upstream:{id:123}};
-const config={version:2,lessons:[{id:'lesson-02',title:'练习二'}],groups:[{id:'group-03',representative:'student'},{id:'group-04',representative:'student'}]};
+const config={version:2,lessons:[{id:'lesson-02',title:'练习二'}],groups:[{id:'group-03',members:['student','peer'],representatives:['student']},{id:'group-04',members:['student','peer'],representatives:['student']}]};
 const files=()=>[{path:'README.md',bytes:Buffer.from('你好，AIBT！')},{path:'image.png',bytes:Buffer.from([137,80,78,71,0,255,1,2])}].map(f=>({...f,sha:blobSha(f.bytes)}));
-const params=g=>({api:g.api,context,config,group:3,repo:'student/'+REPO_NAME,slug:'lesson-02',files:files()});
+const params=g=>({api:g.api,context,config,group:3,kind:'team',repo:'student/'+REPO_NAME,slug:'lesson-02',files:files()});
 
 test('lesson numbers normalize and traversal is rejected',()=>{
   assert.equal(lessonId('2'),'lesson-02');assert.equal(lessonId('lesson-02'),'lesson-02');
@@ -87,9 +87,9 @@ test('binary upload is lossless and retry reuses PR without another commit',asyn
   const g=github(),result=await publish(params(g));assert.equal(result.filesVerified,2);assert.equal(result.draft,false);
   const png=files()[1];assert.deepEqual(g.store.blobs.get(png.sha),png.bytes);
   assert.equal(result.group,'group-03');assert.equal(result.lesson,'lesson-02');
-  assert.equal(result.branch,'aibt/student/lesson-02/group-03');
-  assert.match(result.folder,/submissions\/lesson-02\/group-03\/$/);
-  assert.equal(g.store.prs[0].title,'[练习02][第03组] student');
+  assert.equal(result.branch,'aibt/student/lesson-02/group-03/team');
+  assert.match(result.folder,/submissions\/lesson-02\/group-03\/team\/$/);
+  assert.equal(g.store.prs[0].title,'[练习02][第03组][小组] student');
   const commits=g.store.calls.filter(c=>c.endpoint.endsWith('/git/commits')&&c.method==='POST').length;
   const retry=await publish(params(g));assert.equal(retry.pr,result.pr);assert.equal(retry.changed,0);assert.equal(g.store.prs.length,1);
   assert.equal(g.store.calls.filter(c=>c.endpoint.endsWith('/git/commits')&&c.method==='POST').length,commits);
@@ -99,16 +99,16 @@ test('update retains previous remote files; a closed PR gets a fresh revision',a
   const f={path:'new.md',bytes:Buffer.from('new')};f.sha=blobSha(f.bytes);
   const updated=await publish({...params(g),files:[files()[0],f]});assert.equal(g.store.prs.length,1);
   const updatedTree=g.store.trees.get(g.store.commits.get(g.store.refs.get(updated.branch)).tree.sha);
-  assert.equal(updatedTree.size,3);assert.equal(updatedTree.get('submissions/lesson-02/group-03/README.md'),files()[0].sha);
+  assert.equal(updatedTree.size,3);assert.equal(updatedTree.get('submissions/lesson-02/group-03/team/README.md'),files()[0].sha);
   g.store.prs[0].state='closed';const revision=await publish(params(g));assert.match(revision.branch,/-r2$/);assert.equal(g.store.prs.length,2);
 });
 test('unexpected branch changes are rejected before uploading',async()=>{
-  const g=github();g.store.refs.set('aibt/student/lesson-02/group-03','bad');g.store.commits.set('bad',{tree:{sha:'bad-tree'}});g.store.trees.set('bad-tree',new Map([['lessons/README.md','foreign']]));
+  const g=github();g.store.refs.set('aibt/student/lesson-02/group-03/team','bad');g.store.commits.set('bad',{tree:{sha:'bad-tree'}});g.store.trees.set('bad-tree',new Map([['lessons/README.md','foreign']]));
   await assert.rejects(publish(params(g)),/范围以外/);assert.equal(g.store.blobs.size,0);assert.equal(g.store.prs.length,0);
 });
 test('concurrent branch updates never force or open a PR',async()=>{
   const g=github();let reads=0;
-  const api=async(...args)=>{const [endpoint,method='GET']=args;if(method==='GET'&&endpoint.endsWith('/git/ref/heads/aibt/student/lesson-02/group-03')&&++reads===2)return {object:{sha:'someone-else'}};return g.api(...args);};
+  const api=async(...args)=>{const [endpoint,method='GET']=args;if(method==='GET'&&endpoint.endsWith('/git/ref/heads/aibt/student/lesson-02/group-03/team')&&++reads===2)return {object:{sha:'someone-else'}};return g.api(...args);};
   await assert.rejects(publish({...params(g),api}),/同时被更新/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
 });
 test('owner requires explicit teacher test and test PR is draft',async()=>{
@@ -123,7 +123,7 @@ test('a bad remote blob hash fails without publishing a ref',async()=>{
   await assert.rejects(publish({...params(g),api}),/哈希不符/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
 });
 test('unregistered and unauthorized groups fail before creating remote state',async()=>{
-  for(const options of [{group:5},{group:undefined},{context:{...context,login:'another'}},{config:{...config,groups:[{id:'group-03',representative:null}]}}]){
+  for(const options of [{group:5},{group:undefined},{context:{...context,login:'another'}},{config:{...config,groups:[{id:'group-03',members:[],representatives:[]}]}}]){
     const g=github();await assert.rejects(publish({...params(g),...options}),/组|代表|登记/);
     assert.equal(g.store.calls.some(c=>c.method!=='GET'),false);
   }
@@ -136,14 +136,27 @@ test('a submission requires README and rejects absolute or traversing source pat
 });
 test('two authorized groups have separate branches and PRs',async()=>{
   const g=github();const a=await publish(params(g)),b=await publish({...params(g),group:4});
-  assert.equal(a.branch,'aibt/student/lesson-02/group-03');assert.equal(b.branch,'aibt/student/lesson-02/group-04');
+  assert.equal(a.branch,'aibt/student/lesson-02/group-03/team');assert.equal(b.branch,'aibt/student/lesson-02/group-04/team');
   assert.equal(g.store.prs.length,2);
 });
 test('a different representative cannot create a duplicate pending group PR',async()=>{
   const g=github();
-  g.store.prs.push({number:9,state:'open',head:{ref:'aibt/previous/lesson-02/group-03',label:'previous:aibt/previous/lesson-02/group-03'}});
+  g.store.prs.push({number:9,state:'open',head:{ref:'aibt/previous/lesson-02/group-03/team',label:'previous:aibt/previous/lesson-02/group-03/team'}});
   await assert.rejects(publish(params(g)),/已有|重复/);
   assert.equal(g.store.calls.some(c=>c.method!=='GET'),false);
+});
+test('members submit independently while the same account can also submit the team work',async()=>{
+  const g=github();
+  const a=await publish({...params(g),kind:'individual'});
+  const b=await publish({...params(g),kind:'individual',context:{...context,login:'peer'},repo:'peer/'+REPO_NAME});
+  const team=await publish(params(g));
+  assert.equal(g.store.prs.length,3);
+  assert.match(a.folder,/group-03\/individual\/student\/$/);assert.match(b.folder,/group-03\/individual\/peer\/$/);assert.match(team.folder,/group-03\/team\/$/);
+  assert.equal((await publish({...params(g),kind:'individual'})).pr,a.pr);
+});
+test('a teacher-marked maintenance PR is skipped when choosing a new formal submission branch',async()=>{
+  const g=github();const before=await publish(params(g));g.store.prs[0].labels=[{name:'course-maintenance'}];
+  const result=await publish(params(g));assert.notEqual(result.pr,before.pr);assert.match(result.branch,/team-r2$/);
 });
 test('submit checks the trusted roster before creating a fork',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'aibt-roster-'));
@@ -157,7 +170,7 @@ test('submit checks the trusted roster before creating a fork',async()=>{
   };
   try{
     await fs.writeFile(path.join(root,'README.md'),'作品');
-    await assert.rejects(main(['submit','--lesson','2','--group','3','--source',root],api),/代表/);
+    await assert.rejects(main(['submit','--lesson','2','--group','3','--kind','team','--source',root],api),/代表/);
     assert.equal(calls.some(c=>c.method!=='GET'||c.endpoint.includes('/forks')),false);
   }finally{await fs.rm(root,{recursive:true,force:true});}
 });

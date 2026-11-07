@@ -1,55 +1,61 @@
 # 老师管理与验收
 
-## 课程设置
-
-主仓库为 f3484134/AIBT-WORKSHOP-261107，公开、默认分支 main。学生代表用个人 GitHub 账号 Fork、上传到自己分支，再向老师创建 PR；不需要给学生老师仓库的写入权限或共享密码。
-
 ## 开课前登记
 
-1. 合并分组提交更新，确认 Actions 已启用。
-2. 查看根目录 [course.json](../course.json)：已有 4 个练习和 5 个组别占位，组数可增加到 99，删除尚未使用的占位也可以。
-3. 收集每组代表的 GitHub login，将对应 representative 的 null 改为账号字符串，例如：
+主仓库为 f3484134/AIBT-WORKSHOP-261107，公开、默认分支 main。学生使用自己的 Fork 和 PR，不需要老师仓库写入权限或共享密码。
+
+1. 合并本更新，确认 Actions 已启用。
+2. [course.json](../course.json) 预置 4 个练习和 5 个可扩充组别。
+3. 每组填写可交个人作品的 members，以及可交共同作品的 representatives，例如：
 
 ```json
-{ "id": "group-03", "representative": "your-group-representative" }
+{
+  "id": "group-03",
+  "members": ["member-a", "member-b"],
+  "representatives": ["group-uploader"]
+}
 ```
 
-示例账号需要替换，不要求真名、手机号或邮箱。名单只在老师 main 生效；学生修改自己 Fork 的名单不会取得权限。未登记代表不能正式提交，仍能连接测试。更换代表前处理该组同练习的未关闭 PR。
+示例账号需要替换。账号暂不确定就保留空数组；该角色不能正式提交，连接测试仍可进行。仅个人作业可以只填 members；仅小组作业可以只填 representatives；两类同时进行就分别填写。同一账号可列入多个组，也可同时是成员及代表，代表不必属于本组个人提交名单。
 
-课程维护 PR（名单、教材、Skill、工作流）由老师创建/添加 course-maintenance 标签，再人工审阅完整差异；该标签是维护者明确授权，不能给普通作业随意添加。
+名单以老师 main 为准，不要求真名或联系方式，学生不能通过修改自己的 Fork 获得权限。增加组别使用 group-06 等，编号为 01–99，不要求预先建作品目录。
 
-## 归档与审阅
+## 两类作品分别归档
 
-作品固定按 `submissions/lesson-NN/group-NN/` 排列，由 Skill 创建目录。每组每练习一个打开的 PR，标题 `[练习01][第03组] <login>`。同组修改复用原单，已关闭/合并后新开 -r2 等版本。
+| 角色 | 作品位置 | 并行与重交 |
+|---|---|---|
+| 个人 | submissions/lesson-NN/group-NN/individual/<账号>/ | 每人独立 PR，同组可多人并行 |
+| 小组代表 | submissions/lesson-NN/group-NN/team/ | 每组每练习一个待审 PR，换代表前处理原单 |
 
-自动「分组提交检查」会核对实际作者、代表、课次、组号、分支、标题、文件范围、README、重命名、删除、链接及大小。工作流使用可信 base 代码及登记，权限只读，不执行学生作品、不自动合并。
+相同账号可在同一练习提交自己的个人作品，也能代表小组交共同作品，两类互不覆盖。PR 标题分别为 [练习NN][第NN组][个人] <账号>、[练习NN][第NN组][小组] <账号>。修改复用同一作品的打开 PR，关闭/合并后补交使用 -r2 等版本。
 
-建议在 main 的规则中要求 PR 审阅及分组提交检查通过；本更新不修改仓库保护设置。教师用另一个账号审阅学生/维护账号创建的 PR，可以 Approve 和合并；GitHub 不允许作者批准自己的 PR。
+## 审阅与维护
 
-## 按练习与组别查看总览
+自动分组检查验证实际作者、来源、角色、练习、组别、类型、范围、README、链接与大小。检查及总览只使用可信代码，权限只读，不执行学生作品。课程测试入口为 `node tools/run-tests.mjs`，只运行仓库 tests/，不会发现作品中的测试脚本。
 
-打开 [课堂作品总览](https://github.com/f3484134/AIBT-WORKSHOP-261107/actions/workflows/submission-overview.yml)，进入最新成功运行的 Summary。表格包含每个练习和组别、代表、状态、已合并作品和待审 PR。
+课程维护 PR（名单、教材、Skill、工作流及明确要求的文件清理）请由老师添加 course-maintenance 标签，再人工审阅全部差异。维护 PR 不计入作业，不阻挡重复检查，也不会被 helper 复用为正式作业。
 
-- 待登记：代表为空；未交：没有已合并作品或打开的组别 PR。
-- 草稿/待审：已有 PR，仍需查看 Checks 和 Files changed。
-- 已合并：main 有该组作品 README；有更新 PR 时另标注「已有版本」。
+建议 main 要求 PR 审阅及分组检查通过；本更新不修改仓库保护设置。教师另一个账号可以 Approve 和合并由学生测试账号创建的维护 PR；GitHub 不允许作者批准自己的 PR。
 
-PR 更新、关闭、合并和 main 更新都会刷新报告，也可 Run workflow 手动刷新。报告写入 Actions 摘要，不自动推送 main；本地可用 `node tools/build-overview.mjs --output overview.md` 生成 Markdown。实际动作和名单需要本次 PR 合并后才在老师 main 生效。
+## 课堂总览
+
+[课堂作品总览](https://github.com/f3484134/AIBT-WORKSHOP-261107/actions/workflows/submission-overview.yml)最新成功运行的 Summary 按练习、组别、个人/小组及账号排列。个人按成员显示，小组共同作品单列，区分未交、待登记、草稿、待审、已有版本和已合并，不将小组作品算成每个人都已提交。
+
+PR 更新/关闭/合并和 main 更新会刷新，也可手动 Run workflow。总览写入 Actions 摘要，不自动推送 main；本地可用 `node tools/build-overview.mjs --output overview.md` 生成 Markdown。自动检查与总览需要本次更新合并到老师 main 后启用。
 
 ## Qoder / WorkBuddy 验收
 
-统一分发 [Skill 2.0.0 ZIP](../downloads/aibt-workshop.zip?raw=true)。Qoder 安装到课程项目 .qoder/skills/aibt-workshop；WorkBuddy 由技能界面导入。保持 scripts、references 完整，重新打开对话。
+统一分发 [Skill 2.0.0 ZIP](../downloads/aibt-workshop.zip?raw=true)。Qoder 安装到课程项目 .qoder/skills/aibt-workshop，WorkBuddy 从技能界面导入，保留 scripts 和 references 并重开对话。
 
-1. 用学生个人账号执行初始化和完整文字/PNG/草稿 PR 测试；老师模式不能验证学生 Fork。
-2. 登记一个实际小组代表，用 README、图片和一份 PDF/PPTX 提交练习一及对应组号。
-3. 确认目的地 lesson-01/group-NN、二进制 SHA、PR 作者/base/head，以及分组检查结果。
-4. 修改同组作品，确认更新同一个打开的 PR；老师合并后补交，应创建新版本 PR。
-5. 换一个未登记账号或尝试跨组目录，确认被拒绝；在实际教室网络和两款产品中完成界面验收。
+1. 学生账号完整测试 Fork、文字/PNG、跨仓库草稿 PR；老师测试无法涵盖学生 Fork。
+2. 登记两个成员及一个代表，用 README、图片和 PDF/PPTX 分别提交个人及小组作品。
+3. 验证同组个人可并行、各目录独立，同一人可以交两类作品和获授权的不同组作品。
+4. 改文件重交，确认复用相同类型的原单；合并后补交使用新版本。
+5. 验证未登记账号、跨个人目录、跨类型或跨组提交被拒绝。
+6. 在实际 Qoder/WorkBuddy UI、Connector 和教室网络中验收。没有完整 Connector 能力时使用 Node.js 20+ 与 gh，不把本地打包测试当成产品 UI 已验证。
 
-不要把本地 helper/ZIP 测试当作 WorkBuddy/Qoder UI 或所有 Connector 版本已验证。Connector 能力不足时用 Node.js 20+、gh 备用方案；不要求所有学生预先安装 CLI。
+## 升级与维护
 
-## 维护与升级
+旧版账号目录不会自动移动或删除，当前没有待迁移的已合并学生作品。请统一升级旧 Skill，旧连接测试 PR 保留。
 
-旧版按账号归档的作品不自动移动、删除；当前仓库尚无需要迁移的已合并学生作品。旧版 Skill 的正式作业路径会被新检查拒绝，请按 [安装指引](INSTALL.md) 统一升级；旧连接测试 PR 保留。
-
-维护者执行 `node --test`、`python3 tools/package-skill.py`、`git diff --check`。打包器生成可重复 ZIP 及 SHA-256；源 Skill 修改后必须同步更新下载包。检查单个 PR 用 `node tools/check-submission.mjs --pr <编号>`。
+维护命令：`node tools/run-tests.mjs`、`python3 tools/package-skill.py`、`git diff --check`。Skill 修改后同步更新 ZIP 和 SHA-256。单个 PR 检查用 `node tools/check-submission.mjs --pr <编号>`。

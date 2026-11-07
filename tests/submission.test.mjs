@@ -4,11 +4,11 @@ import * as policy from '../skills/aibt-workshop/scripts/course.mjs';
 import {checkPullRequest} from '../tools/check-submission.mjs';
 import {buildOverview} from '../tools/build-overview.mjs';
 
-const config={version:2,lessons:[{id:'lesson-02',title:'练习二'},{id:'lesson-01',title:'练习一'}],groups:[{id:'group-03',representative:'student'},{id:'group-01',representative:null}]};
-const prefix='submissions/lesson-01/group-03/';
+const config={version:2,lessons:[{id:'lesson-02',title:'练习二'},{id:'lesson-01',title:'练习一'}],groups:[{id:'group-03',members:['student','peer'],representatives:['student']},{id:'group-01',members:[],representatives:[]}]};
+const prefix='submissions/lesson-01/group-03/team/';
 const fixture=()=>({
   config:structuredClone(config),
-  pr:{number:7,state:'open',draft:false,title:'[练习01][第03组] student',user:{login:'student'},base:{ref:'main',repo:{full_name:policy.COURSE}},head:{ref:'aibt/student/lesson-01/group-03',repo:{full_name:'student/AIBT-WORKSHOP-261107'}},changed_files:2,labels:[]},
+  pr:{number:7,state:'open',draft:false,title:'[练习01][第03组][小组] student',user:{login:'student'},base:{ref:'main',repo:{full_name:policy.COURSE}},head:{ref:'aibt/student/lesson-01/group-03/team',repo:{full_name:'student/AIBT-WORKSHOP-261107'}},changed_files:2,labels:[]},
   files:[{filename:prefix+'README.md',status:'added'},{filename:prefix+'image.png',status:'added'}],
   tree:{truncated:false,tree:[{path:prefix+'README.md',type:'blob',mode:'100644',size:20},{path:prefix+'image.png',type:'blob',mode:'100644',size:68}]},
   openPulls:[]
@@ -40,7 +40,7 @@ test('submission checker blocks cross-group rename, deletion, hidden files, link
 });
 test('submission checker blocks another pending PR for the same exercise/group',()=>{
   assert.equal(typeof policy.validateSubmission,'function','missing duplicate check');
-  const f=fixture();f.openPulls=[{number:8,state:'open',head:{ref:'aibt/previous/lesson-01/group-03'}}];
+  const f=fixture();f.openPulls=[{number:8,state:'open',head:{ref:'aibt/previous/lesson-01/group-03/team'}}];
   assert.throws(()=>policy.validateSubmission(f),/重复|已有/);
   f.openPulls=[f.pr];assert.equal(policy.validateSubmission(f).kind,'submission');
 });
@@ -49,6 +49,28 @@ test('only an explicit teacher-applied maintenance label exempts a maintenance P
   const f=fixture();f.pr.head.ref='feat/group-submissions';f.files=[{filename:'course.json',status:'modified'}];f.pr.changed_files=1;
   assert.throws(()=>policy.validateSubmission(f));
   f.pr.labels=[{name:'course-maintenance'}];assert.equal(policy.validateSubmission(f).kind,'maintenance');
+});
+test('teacher-marked maintenance PRs never appear in homework or block duplicate checks',()=>{
+  const f=fixture();f.pr.labels=[{name:'course-maintenance'}];
+  assert.deepEqual(policy.matchingGroupPulls([f.pr],{lesson:'lesson-01',group:'group-03',kind:'team'}),[]);
+  const overview=policy.renderOverview({config,tree:{truncated:false,tree:[]},prs:[f.pr]});
+  assert.doesNotMatch(overview,/pull\/7/);assert.doesNotMatch(overview,/\| 待审/);
+});
+test('one group can show separate individual submissions and its shared team submission',()=>{
+  const f=fixture();
+  const personal={...f.pr,number:8,title:'[练习01][第03组][个人] student',head:{...f.pr.head,ref:'aibt/student/lesson-01/group-03/individual'}};
+  const overview=policy.renderOverview({config,tree:f.tree,prs:[f.pr,personal]});
+  assert.match(overview,/个人/);assert.match(overview,/小组/);assert.match(overview,/pull\/7/);assert.match(overview,/pull\/8/);
+  assert.doesNotMatch(overview,/重复提交/);
+});
+test('individual PRs cannot modify another member, and another member pending does not block them',()=>{
+  const f=fixture();f.pr.title='[练习01][第03组][个人] student';f.pr.head.ref='aibt/student/lesson-01/group-03/individual';
+  f.files=f.files.map(file=>({...file,filename:file.filename.replace('/team/','/individual/student/')}));
+  f.tree.tree=f.tree.tree.map(entry=>({...entry,path:entry.path.replace('/team/','/individual/student/')}));
+  f.openPulls=[{number:8,state:'open',head:{ref:'aibt/peer/lesson-01/group-03/individual'}}];
+  assert.equal(policy.validateSubmission(f).submissionKind,'individual');
+  f.files[1].filename=f.files[1].filename.replace('/student/','/peer/');
+  assert.throws(()=>policy.validateSubmission(f),/跨组|其他文件/);
 });
 test('connection tests stay draft, account-scoped, and independent of group registration',()=>{
   assert.equal(typeof policy.validateSubmission,'function','missing connection-test check');

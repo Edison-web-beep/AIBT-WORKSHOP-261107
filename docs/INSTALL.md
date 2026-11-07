@@ -60,4 +60,4 @@ Qoder 可用 `/aibt-workshop` 明确调用；Codex 可用 `$aibt-workshop`；Cla
 
 从旧版升级时先读取现有 SKILL.md 的 metadata.version；没有版本字段的属于旧版。不要直接覆盖：Qoder/Codex/Claude 项目可先把原 Skill 备份到项目的 `.aibt-local/skill-backups/`，再使用项目安装器安装新版；WorkBuddy 按技能界面的更新或重新导入流程操作。保留完整 scripts（包括 course.mjs）和 references，重新打开对话，并让 Agent 报告已读取版本 2.0.0。
 
-正式提交示例：「使用 aibt-workshop，提交练习一第三组，作品在当前选中的文件夹。」老师需先在 course.json 登记该组代表；连接测试无需登记。完整规则见 [统一提交规则](SUBMISSION-RULES.md)。
+正式提交示例：「使用 aibt-workshop，提交练习一第三组的个人作品，作品在当前选中的文件夹。」老师需先在 course.json 的 members（个人）或 representatives（小组代表）中登记账号；连接测试无需登记。完整规则见 [统一提交规则](SUBMISSION-RULES.md)。
