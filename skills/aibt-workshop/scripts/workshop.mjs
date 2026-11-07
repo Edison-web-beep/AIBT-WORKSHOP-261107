@@ -6,14 +6,9 @@ import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {COURSE,REPO_NAME,lessonId,groupId,normalizeLogin,submissionTarget,readCourseConfig,listPullRequests,matchingGroupPulls} from './course.mjs';
+import {COURSE,REPO_NAME,lessonId,groupId,normalizeLogin,submissionTarget,readCourseConfig,listPullRequests,matchingGroupPulls,MAX_FILE,MAX_TOTAL,MAX_FILES,SKIP_DIRS,EXTENSIONS,SECRET_NAME,SECRET_CONTENT,validateWorkTree} from './course.mjs';
 export * from './course.mjs';
 
-const MAX_FILE=20*1024*1024, MAX_TOTAL=50*1024*1024, MAX_FILES=200;
-const SKIP_DIRS=new Set(['.git','.agents','.claude','.qoder','.codex','.vscode','.idea','node_modules','.venv','venv','__pycache__','.cache','.next','coverage']);
-const EXTENSIONS=new Set('md txt html htm css js mjs cjs jsx ts tsx json csv tsv yaml yml svg png jpg jpeg gif webp pdf pptx docx xlsx ipynb py r sql xml mp3 mp4 wav zip'.split(' '));
-const SECRET_NAME=/(^\.env($|\.)|^\.npmrc$|^\.pypirc$|^credentials?(\.|$)|^secrets?(\.|$)|^id_(rsa|ed25519)|\.(pem|key|p12|pfx|kdbx)$)/i;
-const SECRET_CONTENT=/(-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\bgh[pousr]_[A-Za-z0-9]{20,}|\bgithub_pat_[A-Za-z0-9_]{20,}|\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}|\bAKIA[0-9A-Z]{16}\b)/;
 export const blobSha=b=>createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');
 export async function collectFiles(source){
   const requested=path.resolve(source);
@@ -135,6 +130,8 @@ export async function publish({api=ghApi,context,repo,slug,group,config,files,te
   const tree=await api(`/repos/${repo}/git/trees/${commit.tree.sha}?recursive=1`);
   if(tree.truncated) throw new Error('GitHub 目录清单被截断，请通知老师。');
   const existing=new Map(tree.tree.filter(x=>x.type==='blob').map(x=>[x.path,x.sha]));
+  const replaced=new Set(targetFiles.map(file=>file.path));
+  validateWorkTree({truncated:false,tree:[...tree.tree.filter(entry=>!replaced.has(entry.path)),...targetFiles.map(file=>({path:file.path,type:'blob',mode:'100644',size:file.bytes.length}))]},prefix,{requireReadme:!test});
   const changed=targetFiles.filter(f=>existing.get(f.path)!==f.sha);
   if(changed.length){
     const entries=[];

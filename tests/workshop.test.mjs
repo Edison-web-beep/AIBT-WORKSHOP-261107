@@ -43,7 +43,7 @@ function github(){
       const sha='c'+(++store.counter);store.commits.set(sha,{tree:{sha:body.tree},parents:body.parents});return {sha};
     }
     if(tail.startsWith('/git/trees/')&&method==='GET'){
-      const ref=tail.split('/').pop().split('?')[0];return {truncated:false,tree:[...treeFor(ref)].map(([path,sha])=>({path,sha,type:'blob'}))};
+      const ref=tail.split('/').pop().split('?')[0];return {truncated:false,tree:[...treeFor(ref)].map(([path,sha])=>({path,sha,type:'blob',mode:'100644',size:store.blobs.get(sha)?.length??0}))};
     }
     if(tail==='/git/trees'&&method==='POST'){
       const tree=new Map(store.trees.get(body.base_tree));for(const entry of body.tree)tree.set(entry.path,entry.sha);
