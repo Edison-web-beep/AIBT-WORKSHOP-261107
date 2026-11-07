@@ -10,7 +10,7 @@
 | 老师登记 | 读取老师仓库 main 的 course.json，不能读取学生 Fork 代替 |
 | Fork | fork_repository，或学生网页完成一次 Fork |
 | 分支与写入 | branch/ref、blob（base64）、tree、commit |
-| PR | 分页读取 PR、创建、读取状态，测试须能创建 draft |
+| PR | 分页读取 PR、创建、读取状态，测试须能创建 draft；并发撞单时可关闭本次新建的重复单 |
 | 验证 | 文件内容、Git tree/blob SHA、PR base/head/状态 |
 
 只有文字上传工具时，不把图片 base64 当文字文件提交。支持 create_blob(encoding=base64) 与 tree/commit/ref 的 Connector 才能无损提交二进制；否则改走 CLI。若只缺 Fork，可让学生在 https://github.com/f3484134/AIBT-WORKSHOP-261107/fork 创建一次，不必因此安装全部 CLI 工具。
@@ -23,7 +23,7 @@
 4. 扫描源目录，保留相对路径和二进制；根部必须有 README.md。每份个人作品或小组共同作品最多 200 文件、单个 20 MiB、总计 50 MiB；排除隐藏设置、依赖包、凭证、密钥和符号链接。先报告文件数、略过项目及公开目的地。
 5. 新分支以老师最新 main 为基础。若 Fork 无法使用该 commit，提示在 GitHub Sync fork 更新，遇冲突停止；不 reset Fork。新 tree 基于当前 tree，commit parent 为当前 head。更新 ref 前再次读取 head，拒绝并发覆盖，force=false。
 6. 只新增/更新本次文件，保留远端旧文件。读取完整树检查范围、文件数/大小、README 与符号链接；被截断时停止。PR 差异只能在所选练习、组别、类型和个人账号的固定目录，重命名来源也须同范围，不删除文件。
-7. 正式 PR：标题 `[练习NN][第NN组][个人] <login>` 或 `[练习NN][第NN组][小组] <login>`，base=main，head=`<login>:<branch>`，draft=false。说明包含练习、组号、提交类型、实际账号和作品介绍，不包含本机路径或环境资料。不要重复开 PR。
+7. 正式 PR：标题 `[练习NN][第NN组][个人] <login>` 或 `[练习NN][第NN组][小组] <login>`，base=main，head=`<login>:<branch>`，draft=false。说明包含练习、组号、提交类型、实际账号和作品介绍，不包含本机路径或环境资料。创建前和创建后分页复查同一作品的打开 PR。并发撞单时按编号保留较早单，只关闭本次调用刚创建的较晚单并读回状态，保留其文件分支，返回保留链接；不能关闭其他人的单或复用的原单。重复仍存在、列表不完整或关闭能力不足时停止并说明需老师处理，不能报告成功。查询不能提供原子锁。
 8. 连接测试：生成 `connection-tests/<login>/connection.md` 与 pixel.png，分支 `aibt/<login>/connection-test`，关闭后用 -r2，标题 `[连接测试] <login> / connection-test`，draft=true。老师账号用自己仓库的测试分支，并报告学生 Fork 未验证。
 9. 读取远端文件 SHA 与 PR base/head/状态。测试保留草稿，不自动合并。仅只读诊断不建立 Fork、上传或发评论。
 

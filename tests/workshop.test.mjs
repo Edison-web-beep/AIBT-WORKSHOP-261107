@@ -26,6 +26,11 @@ function github(){
       return store.prs.filter(p=>(!head||p.head.label===head)&&(state==='all'||p.state===state));
     }
     if(tail.startsWith('/pulls/')&&method==='GET')return store.prs.find(p=>p.number===Number(tail.split('/').pop()));
+    if(tail.startsWith('/pulls/')&&method==='PATCH'){
+      assert.deepEqual(body,{state:'closed'});
+      const pr=store.prs.find(p=>p.number===Number(tail.split('/').pop()));
+      pr.state='closed';return pr;
+    }
     if(tail==='/pulls'&&method==='POST'){
       const branch=body.head.split(':').slice(1).join(':');
       const pr={number:store.prs.length+1,state:'open',draft:body.draft,title:body.title,base:{ref:body.base},head:{ref:branch,label:body.head,repo:{full_name:body.head.split(':')[0]+'/'+REPO_NAME}},html_url:'https://github.com/'+COURSE+'/pull/'+(store.prs.length+1)};
@@ -144,6 +149,49 @@ test('a different representative cannot create a duplicate pending group PR',asy
   g.store.prs.push({number:9,state:'open',head:{ref:'aibt/previous/lesson-02/group-03/team',label:'previous:aibt/previous/lesson-02/group-03/team'}});
   await assert.rejects(publish(params(g)),/已有|重复/);
   assert.equal(g.store.calls.some(c=>c.method!=='GET'),false);
+});
+test('simultaneous team representatives keep one open PR and never both report success',async()=>{
+  const g=github();
+  const shared={...config,groups:[{id:'group-03',members:['student','peer'],representatives:['student','peer']}]};
+  let arrived=0,release;
+  const ready=new Promise(resolve=>{release=resolve;});
+  const apiFor=login=>async(...args)=>{
+    const [endpoint,method='GET']=args;
+    if(endpoint===`/repos/${COURSE}/pulls`&&method==='POST'){
+      if(++arrived===2)release();
+      await ready;
+    }
+    if(endpoint.startsWith(`/repos/${COURSE}/pulls/`)&&method==='PATCH'){
+      const pr=g.store.prs.find(p=>p.number===Number(endpoint.split('/').pop()));
+      assert.equal(pr.head.label.split(':')[0],login,'only close the PR created by this invocation');
+    }
+    return g.api(...args);
+  };
+  const results=await Promise.allSettled(['student','peer'].map(login=>publish({...params(g),api:apiFor(login),config:shared,context:{...context,login},repo:login+'/'+REPO_NAME})));
+  assert.equal(arrived,2,'both requests passed the preflight before creation');
+  assert.ok(results.filter(r=>r.status==='fulfilled').length<=1,'duplicate state must not be reported as two successes');
+  assert.deepEqual(g.store.prs.filter(pr=>pr.state==='open').map(pr=>pr.number),[1]);
+  assert.equal(g.store.prs[1].state,'closed');
+  assert.ok(results.some(r=>r.status==='rejected'&&r.reason.message.includes('https://github.com/'+COURSE+'/pull/1')));
+});
+test('simultaneous personal submissions from different members both succeed',async()=>{
+  const g=github();
+  const results=await Promise.all(['student','peer'].map(login=>publish({...params(g),kind:'individual',context:{...context,login},repo:login+'/'+REPO_NAME})));
+  assert.equal(new Set(results.map(r=>r.pr)).size,2);
+  assert.equal(g.store.prs.filter(pr=>pr.state==='open').length,2);
+});
+test('a concurrent duplicate never causes an established PR to be closed',async()=>{
+  const g=github();await publish(params(g));
+  let inserted=false;
+  const api=async(...args)=>{
+    if(!inserted&&args[0].includes('/git/trees/')){
+      inserted=true;
+      g.store.prs.push({number:2,state:'open',head:{ref:'aibt/peer/lesson-02/group-03/team',label:'peer:aibt/peer/lesson-02/group-03/team'},html_url:'https://github.com/'+COURSE+'/pull/2'});
+    }
+    return g.api(...args);
+  };
+  await assert.rejects(publish({...params(g),api}),/重复|同时|已有/);
+  assert.equal(g.store.prs.every(pr=>pr.state==='open'),true);
 });
 test('members submit independently while the same account can also submit the team work',async()=>{
   const g=github();

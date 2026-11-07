@@ -1,6 +1,6 @@
 # 分组提交实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 将课程提交改为练习和组别归档，提供可信检查、自动总览和可用于 Qoder/WorkBuddy 的新版 Skill。
 
@@ -31,12 +31,12 @@
 
 **Files:** Create `course.json`, `skills/aibt-workshop/scripts/course.mjs`; modify `skills/aibt-workshop/scripts/workshop.mjs`, `tests/workshop.test.mjs`; create `tests/course.test.mjs`.
 
-**Interfaces:** Produces `groupId(value)`, `validateConfig(config)`, `submissionTarget(config,{login,lesson,group})`, `parseSubmissionBranch(branch)`, `readCourseConfig(api,ref)`, `listPullRequests(api,state)`; publish accepts group/config and returns group/lesson.
+**Interfaces:** Produces `groupId(value)`, `validateConfig(config)`, `submissionTarget(config,{login,lesson,group,kind})`, `parseSubmissionBranch(branch)`, `readCourseConfig(api,ref)`, `listPullRequests(api,state)`; publish accepts group/config and returns group/lesson.
 
-- [ ] Write failing tests for canonical lesson/group paths, unregistered/wrong representative refusal, README requirement, group-isolated retries/revisions and trusted config before fork creation.
-- [ ] Run `node tools/run-tests.mjs`; expected new behavior tests fail against existing helper.
-- [ ] Implement shared rules and helper; preserve connection tests and scanner limits.
-- [ ] Run `node tools/run-tests.mjs`; expected all current tests pass. Commit.
+- [x] Write failing tests for canonical lesson/group paths, unregistered/wrong representative refusal, README requirement, group-isolated retries/revisions and trusted config before fork creation.
+- [x] Run `node tools/run-tests.mjs`; expected new behavior tests fail against existing helper.
+- [x] Implement shared rules and helper; preserve connection tests and scanner limits.
+- [x] Run `node tools/run-tests.mjs`; expected all current tests pass. Commit.
 
 ### Task 2: PR 检查与总览
 
@@ -44,10 +44,10 @@
 
 **Interfaces:** Consumes Task 1 rules. Produces `validateSubmission({config,pr,files,tree,openPulls})`, `renderOverview({config,tree,prs})`; CLI `node tools/check-submission.mjs --pr N`, `node tools/build-overview.mjs [--output path]`.
 
-- [ ] Write failing tests for authorization, wrong base/head, rename/delete/link, duplicate group PRs, maintenance exemption and ordered/complete overview with pagination.
-- [ ] Run `node tools/run-tests.mjs`; expected new tests fail.
-- [ ] Implement trusted read-only check and overview workflows; test workflow uses Node 20 on Linux/Windows.
-- [ ] Run `node tools/run-tests.mjs`; expected all tests pass. Commit.
+- [x] Write failing tests for authorization, wrong base/head, rename/delete/link, duplicate group PRs, maintenance exemption and ordered/complete overview with pagination.
+- [x] Run `node tools/run-tests.mjs`; expected new tests fail.
+- [x] Implement trusted read-only check and overview workflows; test workflow uses Node 20 on Linux/Windows.
+- [x] Run `node tools/run-tests.mjs`; expected all tests pass. Commit.
 
 ### Task 3: 简体中文 Skill、指引与分发
 
@@ -55,10 +55,10 @@
 
 **Interfaces:** Consumes Task 1 target and Task 2 check/overview. Standalone ZIP includes every shared runtime module and reference. Installer remains non-overwriting.
 
-- [ ] Skill baseline: independently demonstrate old Skill omits group path/identity. Already observed before authoring: destination `submissions/student/lesson-01/`, no group question or validation.
-- [ ] Write distribution tests, run them and observe missing packaging tool fail.
-- [ ] Update simplified Chinese guides and Skill 2.0.0; add reproducible ZIP packaging.
-- [ ] Run full suite; verify ZIP hashes, Qoder install/overwrite refusal and standalone help. Independently test revised Skill behavior. Commit.
+- [x] Skill baseline: independently demonstrate old Skill omits group path/identity. Already observed before authoring: destination `submissions/student/lesson-01/`, no group question or validation.
+- [x] Write distribution tests, run them and observe missing packaging tool fail.
+- [x] Update simplified Chinese guides and Skill 2.0.0; add reproducible ZIP packaging.
+- [x] Run full suite; verify ZIP hashes, Qoder install/overwrite refusal and standalone help. Independently test revised Skill behavior. Commit.
 
 ### Task 4: 个人/小组混合提交和审查修正
 
@@ -66,13 +66,13 @@
 
 **Interfaces:** submissionTarget(...,{login,lesson,group,kind})；kind 为 individual 或 team；个人按 members、小组按 representatives 授权，分支附 /<kind>。matchingGroupPulls 排除维护 PR，个人按账号筛选、小组跨代表排他。renderOverview 分开列出个人和小组。
 
-- [ ] RED：个人独立目录、同账号跨组/跨角色、成员不能冒充代表、多个成员并行、小组排他、维护 PR 过滤及不复用、作品测试哨兵不执行。
-- [ ] GREEN：实现双角色、双目录、双分支和相应总览，限定根 tests/ 的跨平台测试入口。
-- [ ] 同步简体中文文档和 ZIP，以新混合场景独立验证 Skill；在 Node20/当前 Node 跑完整课程测试。
-- [ ] 针对新增混合范围进行独立审查；原审查发现以回归测试验证，不重复派原修复审查。
+- [x] RED：个人独立目录、同账号跨组/跨角色、成员不能冒充代表、多个成员并行、小组排他、维护 PR 过滤及不复用、作品测试哨兵不执行。
+- [x] GREEN：实现双角色、双目录、双分支和相应总览，限定根 tests/ 的跨平台测试入口。
+- [x] 同步简体中文文档和 ZIP，以新混合场景独立验证 Skill；在 Node20/当前 Node 跑完整课程测试。
+- [x] 针对新增混合范围进行独立审查；原审查发现以回归测试验证，不重复派原修复审查。新增范围审查发现的双代表并发重复单，以真正同时创建的回归复现后修正，并复查本项。
 
 ### Final verification and PR
 
-- [ ] Run full suite on supported Node 20 and current Node; check whitespace/diff and distribution hashes.
-- [ ] Obtain one independent whole-branch review; resolve important findings with regression tests.
+- [x] Run full suite on supported Node 20 and current Node; check whitespace/diff and distribution hashes.
+- [x] Obtain one independent whole-branch review; resolve important findings with regression tests.
 - [ ] Push only feature branch to yuhsiuli fork. Create maintenance PR to teacher main; read back base/head/author/diff and CI state. Leave approval/merge to teacher.

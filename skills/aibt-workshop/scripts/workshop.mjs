@@ -109,10 +109,13 @@ export async function publish({api=ghApi,context,repo,slug,group,kind,config,fil
   const targetFiles=files.map(f=>({...f,path:prefix+f.path}));
   if(!targetFiles.length||targetFiles.some(f=>!f.path.startsWith(prefix)||f.path.split('/').includes('..'))) throw new Error('提交路径不合法。');
   const selected=await chooseBranch(api,repo,login,slug);
-  if(target){
+  const checkPending=async()=>{
+    if(!target)return;
     const pending=matchingGroupPulls(await listPullRequests(api,'open'),target);
-    if(pending.some(pr=>pr.number!==selected.pr?.number))throw new Error('该作品已有其他打开的 PR，请先请老师处理，避免重复提交。');
-  }
+    const other=pending.find(pr=>pr.number!==selected.pr?.number);
+    if(other)throw new Error(`该作品已有其他打开的 PR：${other.html_url??`https://github.com/${COURSE}/pull/${other.number}`}。请先查询状态，避免重复提交。`);
+  };
+  await checkPending();
   const {branch}=selected;
   let ref=await optional(api,`/repos/${repo}/git/ref/heads/${branch}`);
   if(!ref){
@@ -153,12 +156,33 @@ export async function publish({api=ghApi,context,repo,slug,group,kind,config,fil
   const remote=new Map(finalTree.tree.map(x=>[x.path,x.sha]));
   if(targetFiles.some(f=>remote.get(f.path)!==f.sha)) throw new Error('远端文件验证失败，尚不能视为提交成功。');
   await checkScope();
+  await checkPending();
   let pr=selected.pr;
   if(!pr){
     pr=await api(`/repos/${COURSE}/pulls`,'POST',{base:'main',head:login+':'+branch,title:test?`[连接测试] ${login} / ${slug}`:target.title,body:`${test?'首次连接测试；此 PR 保留为草稿，无须合并。':`课堂作品：${target.lesson} / ${target.group} / ${target.kind}；提交账号：${login}。请老师审阅后合并。`}\n\n${summary}\n\n作品：\`${prefix}\`\n\n由 aibt-workshop Skill 提交；内容公开。`,draft:test,maintainer_can_modify:true});
   }
   const verified=await api(`/repos/${COURSE}/pulls/${pr.number}`);
   if(verified.state!=='open'||verified.base.ref!=='main'||verified.head.ref!==branch||verified.head.repo?.full_name?.toLowerCase()!==repo.toLowerCase()||test&&!verified.draft) throw new Error('PR 状态验证未通过，请查询状态。');
+  if(target){
+    // The preflight is not a lock: representatives can create from different forks.
+    // Resolve a race by closing only this invocation's newly created, later PR.
+    const pending=matchingGroupPulls(await listPullRequests(api,'open'),target).sort((a,b)=>a.number-b.number);
+    if(!pending.some(p=>p.number===pr.number))throw new Error(`未能在打开的作品 PR 中确认本次提交，请查询状态：${verified.html_url}`);
+    if(pending.length>1){
+      const retained=pending[0],url=retained.html_url??`https://github.com/${COURSE}/pull/${retained.number}`;
+      if(!selected.pr&&pr.number!==retained.number){
+        try{
+          await api(`/repos/${COURSE}/pulls/${pr.number}`,'PATCH',{state:'closed'});
+          const closed=await api(`/repos/${COURSE}/pulls/${pr.number}`);
+          if(closed.state!=='closed')throw new Error('关闭状态未确认');
+        }catch{
+          throw new Error(`检测到同时提交；未能确认新建重复 PR 已关闭：${verified.html_url}。请老师处理，较早的 PR：${url}`);
+        }
+        throw new Error(`检测到同时提交，已关闭本次新建的重复 PR；保留较早的 PR：${url}。作品分支仍保留，请与该代表协调。`);
+      }
+      throw new Error(`检测到同时提交或重复 PR，尚不能确认提交成功。较早的 PR：${url}。请稍后查询状态，若重复仍存在请老师处理。`);
+    }
+  }
   return {login,lesson:target?.lesson??null,group:target?.group??null,kind:target?.kind??null,mode:repo===COURSE?'teacher-test':'student-fork',repository:repo,branch,filesVerified:targetFiles.length,changed:changed.length,pr:verified.html_url,draft:verified.draft,folder:`https://github.com/${repo}/tree/${branch}/${prefix}`};
 }
 export function testFiles(){
