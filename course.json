@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "lessons": [
+    { "id": "lesson-01", "title": "练习一" },
+    { "id": "lesson-02", "title": "练习二" },
+    { "id": "lesson-03", "title": "练习三" },
+    { "id": "lesson-04", "title": "练习四" }
+  ],
+  "groups": [
+    { "id": "group-01", "representative": null },
+    { "id": "group-02", "representative": null },
+    { "id": "group-03", "representative": null },
+    { "id": "group-04", "representative": null },
+    { "id": "group-05", "representative": null }
+  ]
+}
