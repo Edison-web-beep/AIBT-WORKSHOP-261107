@@ -75,4 +75,6 @@
 
 - [x] Run full suite on supported Node 20 and current Node; check whitespace/diff and distribution hashes.
 - [x] Obtain one independent whole-branch review; resolve important findings with regression tests.
-- [ ] Push only feature branch to yuhsiuli fork. Create maintenance PR to teacher main; read back base/head/author/diff and CI state. Leave approval/merge to teacher.
+- [x] Push only feature branch to yuhsiuli fork. Create maintenance PR to teacher main; read back base/head/author/diff and CI state. Leave approval/merge to teacher.
+
+结果：[维护 PR #3](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/3)，作者 yuhsiuli，目标 main，公开待审，未批准或合并。43 项课程测试在本地 Node 20/当前版本及 Fork Linux/Windows Node 20 均通过；原并发问题的独立复查通过。老师 main 的新分组工作流仍需合并后启用。
