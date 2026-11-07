@@ -7,7 +7,7 @@
 | 能力 | 示例工具或等效 API |
 |---|---|
 | 本人身份、课程读取 | get_me / get_user_login、get_repository / fetch |
-| 老师登记 | 读取老师仓库 main 的 course.json，不能读取学生 Fork 代替 |
+| 课程配置 | 读取老师 main 的 course.json，确认开放练习及自报模式，不能读取 Fork 代替 |
 | Fork | fork_repository，或学生网页完成一次 Fork |
 | 分支与写入 | branch/ref、blob（base64）、tree、commit |
 | PR | 分页读取 PR、创建、读取状态，测试须能创建 draft；并发撞单时可关闭本次新建的重复单 |
@@ -18,14 +18,14 @@
 ## Connector 执行契约
 
 1. 确认实际账号和公开课程。已有 `<login>/AIBT-WORKSHOP-261107` 时核对 fork.parent 是课程；同名不相关仓库不覆盖。首次 Fork 后最多检查 6 次，每次约 2 秒。
-2. 正式提交先读取老师 main 的 course.json（version=2）：练习和组别均已登记，类型为 individual 时实际账号在该组 members 数组，类型为 team 时在 representatives 数组；名单可让同一账号参加/代表多个组。缺组号或类型只问缺少项，未授权时停止，不自行改名单或换类型。连接测试跳过此登记步骤。
+2. 正式提交读取老师 main 的 course.json（version=3、submissionMode=self-reported），确认练习已开放。学生自行填写 1–99 的组号并明确 individual/team；不要求预建组别或登记 members/representatives，不因账号或组号未列入名单而拒绝。登录账号必须从工具读回，不能冒用别人账号。同一账号可跨组、跨类型提交；小组代表身份由学生声明，真实组别关系由老师审核 PR 确认。缺信息只问缺少项，不根据目录或账号猜测组别和类型。
 3. 练习/组号归一为 lesson-NN、group-NN。个人远端 `submissions/lesson-NN/group-NN/individual/<login>/`，小组共同作品远端 `submissions/lesson-NN/group-NN/team/`；分支 `aibt/<login>/lesson-NN/group-NN/<kind>`。分页查找 PR：个人每账号每组每练习一单，小组每组每练习一单；不同成员及个人/小组可并行，关闭/合并后递增 -r2。维护标签 PR 不计作业，不能复用。不要复用旧版个人目录分支。
 4. 扫描源目录，保留相对路径和二进制；根部必须有 README.md。每份个人作品或小组共同作品最多 200 文件、单个 20 MiB、总计 50 MiB；排除隐藏设置、依赖包、凭证、密钥和符号链接。先报告文件数、略过项目及公开目的地。
 5. 新分支以老师最新 main 为基础。若 Fork 无法使用该 commit，提示在 GitHub Sync fork 更新，遇冲突停止；不 reset Fork。新 tree 基于当前 tree，commit parent 为当前 head。更新 ref 前再次读取 head，拒绝并发覆盖，force=false。
 6. 只新增/更新本次文件，保留远端旧文件。读取完整树检查范围、文件数/大小、README 与符号链接；被截断时停止。PR 差异只能在所选练习、组别、类型和个人账号的固定目录，重命名来源也须同范围，不删除文件。
-7. 正式 PR：标题 `[练习NN][第NN组][个人] <login>` 或 `[练习NN][第NN组][小组] <login>`，base=main，head=`<login>:<branch>`，draft=false。说明包含练习、组号、提交类型、实际账号和作品介绍，不包含本机路径或环境资料。创建前和创建后分页复查同一作品的打开 PR。并发撞单时按编号保留较早单，只关闭本次调用刚创建的较晚单并读回状态，保留其文件分支，返回保留链接；不能关闭其他人的单或复用的原单。重复仍存在、列表不完整或关闭能力不足时停止并说明需老师处理，不能报告成功。查询不能提供原子锁。
+7. 正式 PR：标题 `[练习NN][第NN组][个人] <login>` 或 `[练习NN][第NN组][小组] <login>`，base=main，head=`<login>:<branch>`，draft=false。说明包含练习、组号、提交类型、实际账号、作品介绍及“组别由提交者自报，请老师确认”，不包含本机路径或环境资料。创建前和创建后分页复查同一作品的打开 PR。并发撞单时按编号保留较早单，只关闭本次调用刚创建的较晚单并读回状态，保留其文件分支，返回保留链接；不能关闭其他人的单或复用的原单。重复仍存在、列表不完整或关闭能力不足时停止并说明需老师处理，不能报告成功。查询不能提供原子锁。
 8. 连接测试：生成 `connection-tests/<login>/connection.md` 与 pixel.png，分支 `aibt/<login>/connection-test`，关闭后用 -r2，标题 `[连接测试] <login> / connection-test`，draft=true。老师账号用自己仓库的测试分支，并报告学生 Fork 未验证。
-9. 读取远端文件 SHA 与 PR base/head/状态。测试保留草稿，不自动合并。仅只读诊断不建立 Fork、上传或发评论。
+9. 读取远端文件 SHA 与 PR base/head/状态。测试保留草稿，不自动合并。仅只读诊断不建立 Fork、上传或发评论。总览自动发现已出现的组别和提交者，没有全班名单时不能推断谁还没交。
 
 ## CLI 备用
 

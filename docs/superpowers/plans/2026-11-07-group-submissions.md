@@ -4,7 +4,7 @@
 
 **Goal:** 将课程提交改为练习和组别归档，提供可信检查、自动总览和可用于 Qoder/WorkBuddy 的新版 Skill。
 
-**Architecture:** 用随 Skill 分发的 course.mjs 共享编号、登记、路径与 PR 校验。helper 读取老师 main 配置，GitHub 检查读取可信 base 配置，总览只读生成 Markdown。
+**Architecture:** 用随 Skill 分发的 course.mjs 共享编号、课程配置、路径与 PR 校验。helper 读取老师 main 配置，GitHub 检查读取可信 base 配置，总览只读生成 Markdown。
 
 **Tech Stack:** Node.js 20+ 标准库、GitHub CLI/REST、GitHub Actions、Python 标准库 ZIP。
 
@@ -15,12 +15,13 @@
 - 远端目录固定为 `submissions/lesson-NN/group-NN/individual/<login>/` 或 `submissions/lesson-NN/group-NN/team/`，编号为 01–99。
 - Node.js 20+；无 npm 运行依赖；保留连接测试；不自动删除、强推、合并或修改 main。
 - 课程文案使用简体中文；兼容 Qoder 项目安装和 WorkBuddy ZIP 导入。
-- 4 个练习、5 组占位、members/representatives 空数组；只从可信老师配置决定权限。
+- 最终模式：4 个练习、学生自报 1–99 组号，无需组别或账号名单；课程配置 version=3，Skill 2.1.0。
+- Task 1–4 为先前严格名单方案及混合提交的实现记录；组内名单授权由 Task 5 的免名单要求取代。最终行为以设计文档为准。
 
 ## Review Focus
 
-- 代表缺失、大小写变化及非法/重复组别，不能产生远端写入。
-- 跨组重命名、删除或链接，以及篡改 fork 内名单，不能绕过范围校验。
+- 缺组号/类型、非法编号或未开放练习不能写远端；合法的新账号、新组别可直接提交。
+- 跨组重命名、删除或链接，以及篡改 Fork 内课程配置，不能绕过范围校验。
 - 多个组、其他代表的未关闭 PR 和并发更新，不能互相覆盖或重复创建。
 - 超过一页 PR、目录树截断、重交已合并作品，不能漏报或误报总览。
 - WorkBuddy 独立解压 ZIP 和带空格/中文路径的 Qoder 安装，必须可运行 helper。
@@ -57,7 +58,7 @@
 
 - [x] Skill baseline: independently demonstrate old Skill omits group path/identity. Already observed before authoring: destination `submissions/student/lesson-01/`, no group question or validation.
 - [x] Write distribution tests, run them and observe missing packaging tool fail.
-- [x] Update simplified Chinese guides and Skill 2.0.0; add reproducible ZIP packaging.
+- [x] Update simplified Chinese guides and Skill 2.1.0; add reproducible ZIP packaging.
 - [x] Run full suite; verify ZIP hashes, Qoder install/overwrite refusal and standalone help. Independently test revised Skill behavior. Commit.
 
 ### Task 4: 个人/小组混合提交和审查修正
@@ -78,3 +79,12 @@
 - [x] Push only feature branch to yuhsiuli fork. Create maintenance PR to teacher main; read back base/head/author/diff and CI state. Leave approval/merge to teacher.
 
 结果：[维护 PR #3](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/3)，作者 yuhsiuli，目标 main，公开待审，未批准或合并。43 项课程测试在本地 Node 20/当前版本及 Fork Linux/Windows Node 20 均通过；原并发问题的独立复查通过。老师 main 的新分组工作流仍需合并后启用。
+
+### Task 5: 学生自报组别，移除老师建名单步骤
+
+- [x] RED：旧 Skill 消费基线错误阻挡新账号、新组别和跨组；新课程测试先验证失败。
+- [x] GREEN：course.json version=3/self-reported，只定义开放练习；提交接受任意实际账号和学生明确填写的合法组号，不要求预建名单。
+- [x] 总览自动发现 main 作品和打开 PR 的组别/个人账号；没有名单不推断全班未交者。
+- [x] 同步简体中文 Skill 2.1.0、教师/学生指引和 Prompt，保持个人隔离、共同作品并发规则及可信检查。
+- [x] 完整 Node20/当前版本测试、ZIP/安装、独立 Skill 消费验证及新增范围审查。
+- [x] 推送原 feature 分支并更新 PR #3 描述；读回最终身份、差异与 Linux/Windows CI，不批准或合并。

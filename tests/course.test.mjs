@@ -2,27 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as policy from '../skills/aibt-workshop/scripts/workshop.mjs';
 
-const config=()=>({version:2,lessons:[{id:'lesson-01',title:'练习一'}],groups:[{id:'group-03',members:['Student','peer'],representatives:['leader']},{id:'group-04',members:[],representatives:[]}]});
+const config=()=>({version:3,submissionMode:'self-reported',lessons:[{id:'lesson-01',title:'练习一'}]});
 
 test('group numbers normalize without accepting traversal or zero',()=>{
   assert.equal(typeof policy.groupId,'function','missing group number validation');
   for(const value of [3,'03','group-03'])assert.equal(policy.groupId(value),'group-03');
   for(const value of [0,100,'../3','group-3/../4','3-r2',' 3'])assert.throws(()=>policy.groupId(value));
 });
-test('submission target uses exercise then group and checks the registered representative',()=>{
-  assert.equal(typeof policy.submissionTarget,'function','missing group submission contract');
-  const target=policy.submissionTarget(config(),{login:'student',lesson:1,group:3,kind:'individual'});
-  assert.equal(target.prefix,'submissions/lesson-01/group-03/individual/student/');
-  assert.equal(target.slug,'lesson-01/group-03/individual');
-  assert.equal(target.title,'[练习01][第03组][个人] student');
-  for(const options of [{login:'other',lesson:1,group:3,kind:'individual'},{login:'student',lesson:1,group:4,kind:'individual'},{login:'student',lesson:2,group:3,kind:'individual'}]){
-    assert.throws(()=>policy.submissionTarget(config(),options),/成员|代表|登记|练习/);
+test('students self-report a group without any account roster or pre-created group',()=>{
+  const target=policy.submissionTarget(config(),{login:'new-student',lesson:1,group:8,kind:'individual'});
+  assert.equal(target.prefix,'submissions/lesson-01/group-08/individual/new-student/');
+  assert.equal(target.slug,'lesson-01/group-08/individual');
+  assert.equal(target.title,'[练习01][第08组][个人] new-student');
+  assert.equal(policy.submissionTarget(config(),{login:'new-student',lesson:1,group:99,kind:'team'}).prefix,'submissions/lesson-01/group-99/team/');
+  for(const options of [{login:'student',lesson:2,group:3,kind:'individual'},{login:'student',lesson:1,group:100,kind:'team'},{login:'../other',lesson:1,group:3,kind:'individual'},{login:'student',lesson:1,group:3}]){
+    assert.throws(()=>policy.submissionTarget(config(),options));
   }
 });
-test('invalid and duplicated roster identifiers are rejected',()=>{
-  assert.equal(typeof policy.validateConfig,'function','missing roster validation');
-  assert.deepEqual(policy.validateConfig(config()).groups[0].members,['peer','student']);
-  for(const bad of [{...config(),version:1},{...config(),groups:[...config().groups,{id:'group-03',members:['another'],representatives:[]}]},{...config(),groups:[{id:'group-00',members:['student'],representatives:[]}]},{...config(),lessons:[{id:'lesson-01',title:''}]}]){
+test('self-report course configuration rejects old policy, invalid or duplicated exercises',()=>{
+  assert.equal(policy.validateConfig(config()).submissionMode,'self-reported');
+  for(const bad of [{...config(),version:2},{...config(),submissionMode:'roster'},{...config(),lessons:[...config().lessons,{id:'lesson-01',title:'重复'}]},{...config(),lessons:[{id:'lesson-00',title:'错误'}]},{...config(),lessons:[{id:'lesson-01',title:''}]}]){
     assert.throws(()=>policy.validateConfig(bad));
   }
 });
@@ -36,7 +35,7 @@ test('course configuration is fetched only from the teacher repository at the su
   const endpoints=[];
   const api=async endpoint=>{endpoints.push(endpoint);return {encoding:'base64',content:Buffer.from(JSON.stringify(config())).toString('base64')};};
   const result=await policy.readCourseConfig(api,'abc123');
-  assert.deepEqual(result.groups[0].members,['peer','student']);
+  assert.equal(result.submissionMode,'self-reported');
   assert.deepEqual(endpoints,['/repos/f3484134/AIBT-WORKSHOP-261107/contents/course.json?ref=abc123']);
 });
 test('PR listing follows every page instead of losing later submissions',async()=>{
@@ -49,16 +48,10 @@ test('PR listing follows every page instead of losing later submissions',async()
   assert.equal(result.length,101);assert.equal(endpoints.length,2);
   assert.match(endpoints[1],/state=open.*page=2$/);
 });
-test('individual and team submissions have separate authorization and storage, including cross-group representatives',()=>{
-  const c=config();c.groups.push({id:'group-05',members:['student'],representatives:['leader']});
-  const personal=policy.submissionTarget(c,{login:'student',lesson:1,group:3,kind:'individual'});
-  const team=policy.submissionTarget(c,{login:'leader',lesson:1,group:3,kind:'team'});
-  assert.equal(personal.prefix,'submissions/lesson-01/group-03/individual/student/');
-  assert.equal(team.prefix,'submissions/lesson-01/group-03/team/');
-  assert.equal(policy.submissionTarget(c,{login:'leader',lesson:1,group:5,kind:'team'}).prefix,'submissions/lesson-01/group-05/team/');
-  assert.equal(policy.submissionTarget(c,{login:'student',lesson:1,group:5,kind:'individual'}).prefix,'submissions/lesson-01/group-05/individual/student/');
-  assert.throws(()=>policy.submissionTarget(c,{login:'student',lesson:1,group:3,kind:'team'}),/代表|授权/);
-  assert.throws(()=>policy.submissionTarget(c,{login:'leader',lesson:1,group:3,kind:'individual'}),/成员|授权/);
-  assert.throws(()=>policy.submissionTarget(c,{login:'student',lesson:1,group:3}),/类型/);
-  c.groups[0].members.push('STUDENT');assert.throws(()=>policy.validateConfig(c),/重复/);
+test('one student can submit personal and team work to different self-reported groups',()=>{
+  const c=config();
+  assert.equal(policy.submissionTarget(c,{login:'Student',lesson:1,group:3,kind:'individual'}).prefix,'submissions/lesson-01/group-03/individual/student/');
+  assert.equal(policy.submissionTarget(c,{login:'student',lesson:1,group:3,kind:'team'}).prefix,'submissions/lesson-01/group-03/team/');
+  assert.equal(policy.submissionTarget(c,{login:'student',lesson:1,group:8,kind:'team'}).prefix,'submissions/lesson-01/group-08/team/');
+  assert.equal(policy.submissionTarget(c,{login:'student',lesson:1,group:8,kind:'individual'}).prefix,'submissions/lesson-01/group-08/individual/student/');
 });

@@ -24,7 +24,7 @@ export function normalizeLogin(value){
   return value.toLowerCase();
 }
 export function validateConfig(config){
-  if(config?.version!==2||!Array.isArray(config.lessons)||!config.lessons.length||config.lessons.length>99||!Array.isArray(config.groups)||config.groups.length>99)throw new Error('课程登记格式错误，需要 version: 2、lessons 和 groups。');
+  if(config?.version!==3||config.submissionMode!=='self-reported'||!Array.isArray(config.lessons)||!config.lessons.length||config.lessons.length>99)throw new Error('课程配置格式错误，需要 version: 3、submissionMode: self-reported 和 lessons。请使用新版免名单 Skill。');
   const unique=(items,normalize,label)=>{
     const seen=new Set();
     return items.map(item=>{
@@ -36,24 +36,12 @@ export function validateConfig(config){
     if(typeof item.title!=='string'||!item.title.trim()||item.title.length>100||/[\r\n]/.test(item.title))throw new Error('练习名称不能为空或包含换行。');
     return {id:item.id,title:item.title.trim()};
   }).sort((a,b)=>a.id.localeCompare(b.id));
-  const accounts=(values,label)=>{
-    if(!Array.isArray(values))throw new Error(`课程登记的 ${label} 必须是 GitHub 账号数组。`);
-    const result=values.map(normalizeLogin);
-    if(new Set(result).size!==result.length)throw new Error(`${label} 含重复账号。`);
-    return result.sort();
-  };
-  const groups=unique(config.groups,groupId,'组别').map(item=>({id:item.id,members:accounts(item.members,'members'),representatives:accounts(item.representatives,'representatives')})).sort((a,b)=>a.id.localeCompare(b.id));
-  return {version:2,lessons,groups};
+  return {version:3,submissionMode:'self-reported',lessons};
 }
 export function submissionTarget(config,{login,lesson,group,kind}){
-  const roster=validateConfig(config),user=normalizeLogin(login),lessonKey=lessonId(lesson),groupKey=groupId(group);
-  if(!roster.lessons.some(item=>item.id===lessonKey))throw new Error(`老师尚未登记练习 ${lessonKey}。`);
-  const team=roster.groups.find(item=>item.id===groupKey);
-  if(!team)throw new Error(`老师尚未登记组别 ${groupKey}，请先请老师补充 course.json。`);
+  const course=validateConfig(config),user=normalizeLogin(login),lessonKey=lessonId(lesson),groupKey=groupId(group);
+  if(!course.lessons.some(item=>item.id===lessonKey))throw new Error(`老师尚未开放练习 ${lessonKey}。`);
   if(!['individual','team'].includes(kind))throw new Error('提交类型请用 individual（个人）或 team（小组代表）。');
-  const allowed=kind==='individual'?team.members:team.representatives,role=kind==='individual'?'成员':'代表';
-  if(!allowed.length)throw new Error(`${groupKey} 尚未登记${role}账号，请先请老师填写 course.json；连接测试仍可执行。`);
-  if(!allowed.includes(user))throw new Error(`当前账号 ${user} 不是 ${groupKey} 的授权${role}。`);
   return {login:user,lesson:lessonKey,group:groupKey,kind,prefix:`submissions/${lessonKey}/${groupKey}/${kind}/`+(kind==='individual'?user+'/':''),slug:`${lessonKey}/${groupKey}/${kind}`,title:`[练习${lessonKey.slice(-2)}][第${groupKey.slice(-2)}组][${kind==='individual'?'个人':'小组'}] ${user}`};
 }
 export function parseSubmissionBranch(branch){
@@ -71,7 +59,7 @@ export async function readCourseConfig(api,ref='main'){
   let file;
   try{file=await api(`/repos/${COURSE}/contents/course.json?ref=${encodeURIComponent(ref)}`);}
   catch(error){if(error.status===404)throw new Error('老师仓库尚未提供新版 course.json，请等待分组提交更新合并。');throw error;}
-  if(file?.encoding!=='base64'||typeof file.content!=='string')throw new Error('无法读取老师的课程登记。');
+  if(file?.encoding!=='base64'||typeof file.content!=='string')throw new Error('无法读取老师的课程配置。');
   return validateConfig(JSON.parse(Buffer.from(file.content,'base64').toString('utf8')));
 }
 export async function listPullRequests(api,state='all'){
@@ -151,36 +139,48 @@ export function validateSubmission({config,pr,files,tree,openPulls=[]}){
 function markdownText(value){
   return String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\\`*_[\]|]/g,'\\$&');
 }
+function submissionPath(path){
+  const match=path?.match(/^submissions\/(lesson-\d{2})\/(group-\d{2})\/(individual\/([a-z\d-]+)|team)\//);
+  if(!match)return null;
+  try{
+    if(lessonId(match[1])!==match[1]||groupId(match[2])!==match[2])return null;
+    return {lesson:match[1],group:match[2],kind:match[4]?'individual':'team',login:match[4]?normalizeLogin(match[4]):null};
+  }catch{return null;}
+}
 export function renderOverview({config,tree,prs}){
-  const roster=validateConfig(config);
+  const course=validateConfig(config);
   if(!tree||tree.truncated||!Array.isArray(tree.tree))throw new Error('远端目录树被截断，不能生成完整总览。');
-  const lines=['# 课堂作品提交总览','','按练习、组号、提交类型和账号排序。待审或草稿仍需查看检查结果并由老师审阅。','','| 练习 | 组别 | 类型 | 提交账号 | 状态 | 已合并作品 | 提交单 |','|---|---|---|---|---|---|---|'];
-  for(const lesson of roster.lessons){
-    for(const group of roster.groups){
-      const slots=[...group.members.map(login=>({kind:'individual',login,allowed:[login]})),{kind:'team',login:null,allowed:group.representatives}];
-      if(!group.members.length)slots.unshift({kind:'individual',login:null,allowed:[]});
-      const unknown=new Set(matchingGroupPulls(prs,{lesson:lesson.id,group:group.id,kind:'individual'}).map(pr=>parseSubmissionBranch(pr.head.ref).login).filter(login=>!group.members.includes(login)));
-      for(const login of [...unknown].sort())slots.push({kind:'individual',login,allowed:[]});
+  const knownLesson=value=>course.lessons.some(lesson=>lesson.id===value.lesson);
+  const works=tree.tree.filter(entry=>entry.type==='blob').map(entry=>submissionPath(entry.path)).filter(value=>value&&knownLesson(value));
+  const pendingLocations=prs.filter(pr=>pr.state==='open'&&!isMaintenancePR(pr)).map(pr=>parseSubmissionBranch(pr.head?.ref)).filter(value=>value&&knownLesson(value));
+  const groups=[...new Set([...works,...pendingLocations].map(value=>value.group))].sort();
+  const lines=['# 课堂作品提交总览','','按练习、组号、提交类型和账号排序。组别由学生自报，老师在 PR 中确认；待审或草稿仍需查看检查结果并由老师审阅。','没有完整名单，无法判断全班谁还没交；这里只汇集已出现的组别和提交者，“暂无提交”不代表任何人的缺交结论。','','| 练习 | 组别 | 类型 | 提交账号 | 状态 | 已合并作品 | 提交单 |','|---|---|---|---|---|---|---|'];
+  for(const lesson of course.lessons){
+    for(const group of groups){
+      const observed=[...works,...pendingLocations].filter(value=>value.lesson===lesson.id&&value.group===group&&value.kind==='individual');
+      const accounts=[...new Set(observed.map(value=>value.login))].sort();
+      const slots=[...accounts.map(login=>({kind:'individual',login})),{kind:'team',login:null}];
+      if(!accounts.length)slots.unshift({kind:'individual',login:null});
       for(const slot of slots){
-        const prefix=`submissions/${lesson.id}/${group.id}/${slot.kind}/`+(slot.kind==='individual'&&slot.login?slot.login+'/':'');
+        const prefix=`submissions/${lesson.id}/${group}/${slot.kind}/`+(slot.kind==='individual'&&slot.login?slot.login+'/':'');
         const merged=Boolean((slot.kind==='team'||slot.login)&&tree.tree.some(entry=>entry.path===prefix+'README.md'&&entry.type==='blob'));
-        const pending=slot.kind==='individual'&&!slot.login?[]:matchingGroupPulls(prs,{lesson:lesson.id,group:group.id,kind:slot.kind,login:slot.login});
-        let state=slot.allowed.length?(merged?'已合并':'未交'):'待登记';
+        const pending=slot.kind==='individual'&&!slot.login?[]:matchingGroupPulls(prs,{lesson:lesson.id,group,kind:slot.kind,login:slot.login});
+        let state=merged?'已合并':'暂无提交';
         if(pending.length>1)state='重复提交，待处理';
         else if(pending.length){
           const pr=pending[0],parsed=parseSubmissionBranch(pr.head.ref),author=pr.user?.login?.toLowerCase();
-          const registered=slot.allowed.includes(author)&&parsed.login===author&&pr.head.repo?.full_name?.toLowerCase()===`${author}/${REPO_NAME}`.toLowerCase()&&pr.base?.ref==='main'&&pr.base.repo?.full_name===COURSE;
-          state=registered?(pr.draft?'草稿':'待审'):'账号权限待核对';
+          const identityMatches=parsed.login===author&&pr.head.repo?.full_name?.toLowerCase()===`${author}/${REPO_NAME}`.toLowerCase()&&pr.base?.ref==='main'&&pr.base.repo?.full_name===COURSE;
+          state=identityMatches?(pr.draft?'草稿':'待审'):'账号身份待核对';
           if(merged)state+='（已有版本）';
         }
         const links=pending.map(pr=>`[PR #${Number(pr.number)}](https://github.com/${COURSE}/pull/${Number(pr.number)})`).join('、')||'—';
         const work=merged?`[查看作品](https://github.com/${COURSE}/tree/main/${prefix})`:'—';
-        const accounts=slot.login?'@'+slot.login:slot.allowed.map(login=>'@'+login).join('、')||'待登记';
-        lines.push(`| ${lesson.id} | ${group.id} | ${slot.kind==='individual'?'个人':'小组'} | ${accounts} | ${state} | ${work} | ${links} |`);
+        const submitters=slot.login?'@'+slot.login:[...new Set(pending.map(pr=>parseSubmissionBranch(pr.head.ref).login))].sort().map(login=>'@'+login).join('、')||'—';
+        lines.push(`| ${lesson.id} | ${group} | ${slot.kind==='individual'?'个人':'小组'} | ${submitters} | ${state} | ${work} | ${links} |`);
       }
     }
   }
-  if(!roster.groups.length)lines.push('','尚未配置组别，请老师先填写 course.json。');
-  lines.push('','## 练习名称','',...roster.lessons.map(lesson=>`- ${lesson.id}：${markdownText(lesson.title)}`),'','连接测试与课程维护 PR 不计入作业。已关闭且未合并的 PR 不视为已收录。','');
+  if(!groups.length)lines.push('','尚无正式作品或打开的提交 PR；学生首次提交后自动出现组别，无需预建名单。');
+  lines.push('','## 练习名称','',...course.lessons.map(lesson=>`- ${lesson.id}：${markdownText(lesson.title)}`),'','连接测试与课程维护 PR 不计入作业。已关闭且未合并的 PR 不视为已收录。','');
   return lines.join('\n');
 }

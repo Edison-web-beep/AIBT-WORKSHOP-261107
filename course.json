@@ -1,5 +1,6 @@
 {
-  "version": 2,
+  "version": 3,
+  "submissionMode": "self-reported",
   "lessons": [
     {
       "id": "lesson-01",
@@ -16,33 +17,6 @@
     {
       "id": "lesson-04",
       "title": "练习四"
-    }
-  ],
-  "groups": [
-    {
-      "id": "group-01",
-      "members": [],
-      "representatives": []
-    },
-    {
-      "id": "group-02",
-      "members": [],
-      "representatives": []
-    },
-    {
-      "id": "group-03",
-      "members": [],
-      "representatives": []
-    },
-    {
-      "id": "group-04",
-      "members": [],
-      "representatives": []
-    },
-    {
-      "id": "group-05",
-      "members": [],
-      "representatives": []
     }
   ]
 }

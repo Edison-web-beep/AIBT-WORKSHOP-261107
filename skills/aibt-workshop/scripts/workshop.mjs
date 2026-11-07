@@ -159,7 +159,7 @@ export async function publish({api=ghApi,context,repo,slug,group,kind,config,fil
   await checkPending();
   let pr=selected.pr;
   if(!pr){
-    pr=await api(`/repos/${COURSE}/pulls`,'POST',{base:'main',head:login+':'+branch,title:test?`[连接测试] ${login} / ${slug}`:target.title,body:`${test?'首次连接测试；此 PR 保留为草稿，无须合并。':`课堂作品：${target.lesson} / ${target.group} / ${target.kind}；提交账号：${login}。请老师审阅后合并。`}\n\n${summary}\n\n作品：\`${prefix}\`\n\n由 aibt-workshop Skill 提交；内容公开。`,draft:test,maintainer_can_modify:true});
+    pr=await api(`/repos/${COURSE}/pulls`,'POST',{base:'main',head:login+':'+branch,title:test?`[连接测试] ${login} / ${slug}`:target.title,body:`${test?'首次连接测试；此 PR 保留为草稿，无须合并。':`课堂作品：${target.lesson} / ${target.group} / ${target.kind}；提交账号：${login}。组别由提交者自报，请老师确认组别及作品后合并。`}\n\n${summary}\n\n作品：\`${prefix}\`\n\n由 aibt-workshop Skill 提交；内容公开。`,draft:test,maintainer_can_modify:true});
   }
   const verified=await api(`/repos/${COURSE}/pulls/${pr.number}`);
   if(verified.state!=='open'||verified.base.ref!=='main'||verified.head.ref!==branch||verified.head.repo?.full_name?.toLowerCase()!==repo.toLowerCase()||test&&!verified.draft) throw new Error('PR 状态验证未通过，请查询状态。');
@@ -196,7 +196,7 @@ export async function main(argv=process.argv.slice(2),api=ghApi){
   while(argv.length){const key=argv.shift();if(!key.startsWith('--')) throw new Error('请使用 --参数 值。');if(key==='--teacher-test') opts.teacherTest=true;else{if(!argv.length)throw new Error('缺少参数值。');opts[key.slice(2)]=argv.shift();}}
   const allowed={help:[],doctor:[],init:[],test:['teacherTest'],plan:['source','lesson','group','kind'],submit:['source','lesson','group','kind','summary'],status:[]};
   if(!allowed[command]||Object.keys(opts).some(key=>!allowed[command].includes(key)))throw new Error('未知命令或参数，请执行 help。');
-  if(command==='help') return {version:'2.0.0',commands:['doctor（只读）','init（创建或确认 Fork）','test [--teacher-test]（文字、图片及草稿 PR）','plan --source <folder> [--lesson 1 --group 3 --kind individual|team]（只读预览）','submit --lesson 1 --group 3 --kind individual|team --source <folder> [--summary <text>]','status（只读）'],course:COURSE};
+  if(command==='help') return {version:'2.1.0',commands:['doctor（只读）','init（创建或确认 Fork）','test [--teacher-test]（文字、图片及草稿 PR）','plan --source <folder> [--lesson 1 --group 3 --kind individual|team]（只读预览）','submit --lesson 1 --group 3 --kind individual|team --source <folder> [--summary <text>]','status（只读）'],course:COURSE};
   if(command==='plan'){
     if(!opts.source)throw new Error('请用 --source 指定作品文件夹。');
     const p=await collectFiles(opts.source);

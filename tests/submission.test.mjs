@@ -4,7 +4,7 @@ import * as policy from '../skills/aibt-workshop/scripts/course.mjs';
 import {checkPullRequest} from '../tools/check-submission.mjs';
 import {buildOverview} from '../tools/build-overview.mjs';
 
-const config={version:2,lessons:[{id:'lesson-02',title:'练习二'},{id:'lesson-01',title:'练习一'}],groups:[{id:'group-03',members:['student','peer'],representatives:['student']},{id:'group-01',members:[],representatives:[]}]};
+const config={version:3,submissionMode:'self-reported',lessons:[{id:'lesson-02',title:'练习二'},{id:'lesson-01',title:'练习一'}]};
 const prefix='submissions/lesson-01/group-03/team/';
 const fixture=()=>({
   config:structuredClone(config),
@@ -14,7 +14,7 @@ const fixture=()=>({
   openPulls:[]
 });
 
-test('submission checker accepts a representative only within the configured exercise and group',()=>{
+test('submission checker accepts self-reported groups but still verifies actual author and source',()=>{
   assert.equal(typeof policy.validateSubmission,'function','missing PR validation');
   const result=policy.validateSubmission(fixture());
   assert.equal(result.kind,'submission');assert.equal(result.lesson,'lesson-01');assert.equal(result.group,'group-03');
@@ -72,9 +72,9 @@ test('individual PRs cannot modify another member, and another member pending do
   f.files[1].filename=f.files[1].filename.replace('/student/','/peer/');
   assert.throws(()=>policy.validateSubmission(f),/跨组|其他文件/);
 });
-test('connection tests stay draft, account-scoped, and independent of group registration',()=>{
+test('connection tests stay draft and account-scoped',()=>{
   assert.equal(typeof policy.validateSubmission,'function','missing connection-test check');
-  const f=fixture();f.config={...config,groups:[]};f.pr.draft=true;f.pr.head.ref='aibt/student/connection-test';
+  const f=fixture();f.config=config;f.pr.draft=true;f.pr.head.ref='aibt/student/connection-test';
   f.files=[{filename:'connection-tests/student/connection.md',status:'added'},{filename:'connection-tests/student/pixel.png',status:'added'}];
   f.tree.tree=f.tree.tree.map((entry,i)=>({...entry,path:f.files[i].filename}));
   assert.equal(policy.validateSubmission(f).kind,'connection-test');
@@ -113,13 +113,14 @@ test('overview runner pins config/tree to one main SHA and includes PRs after pa
   };
   assert.match(await buildOverview(api),/pull\/7/);
 });
-test('overview includes all registered pairs in exercise/group order and distinguishes pending updates',()=>{
+test('overview discovers groups and accounts, sorts exercises and distinguishes pending updates',()=>{
   assert.equal(typeof policy.renderOverview,'function','missing submission overview');
   const f=fixture();
+  f.tree.tree.push({path:'submissions/lesson-02/group-01/individual/new-student/README.md',type:'blob',mode:'100644',size:10});
   const markdown=policy.renderOverview({config,tree:f.tree,prs:[f.pr]});
   assert.ok(markdown.indexOf('lesson-01 | group-01')<markdown.indexOf('lesson-01 | group-03'));
   assert.ok(markdown.indexOf('lesson-01 | group-03')<markdown.indexOf('lesson-02 | group-01'));
-  assert.match(markdown,/待登记/);assert.match(markdown,/待审.*已有版本/);assert.match(markdown,/pull\/7/);assert.match(markdown,/未交/);
+  assert.doesNotMatch(markdown,/待登记/);assert.match(markdown,/@new-student/);assert.match(markdown,/待审.*已有版本/);assert.match(markdown,/pull\/7/);assert.match(markdown,/暂无提交/);assert.match(markdown,/无法判断全班谁还没交/);
   const merged=policy.renderOverview({config,tree:f.tree,prs:[]});assert.match(merged,/已合并/);
   const draft=policy.renderOverview({config,tree:{truncated:false,tree:[]},prs:[{...f.pr,draft:true}]});assert.match(draft,/草稿/);
   assert.throws(()=>policy.renderOverview({config,tree:{truncated:true,tree:[]},prs:[]}),/截断/);
@@ -129,4 +130,17 @@ test('overview escapes course titles and never treats arbitrary PR titles as sub
   const f=fixture();f.config.lessons[0].title='<script> | test';f.pr.title='[练习01][第03组] forged';f.pr.head.ref='random-branch';
   const markdown=policy.renderOverview({config:f.config,tree:{truncated:false,tree:[]},prs:[f.pr]});
   assert.doesNotMatch(markdown,/<script>/);assert.doesNotMatch(markdown,/pull\/7/);assert.match(markdown,/&lt;script&gt;/);
+});
+
+test('overview discovers a new group solely from an open PR and keeps merged individuals without a roster',()=>{
+  const f=fixture();
+  f.pr.head.ref='aibt/student/lesson-01/group-08/team';f.pr.title='[练习01][第08组][小组] student';
+  const tree={truncated:false,tree:[{path:'submissions/lesson-02/group-06/individual/alumni/README.md',type:'blob',mode:'100644',size:10}]};
+  const markdown=policy.renderOverview({config,tree,prs:[f.pr]});
+  assert.match(markdown,/lesson-01 \| group-08 \| 小组 \| @student \| 待审/);
+  assert.match(markdown,/lesson-02 \| group-06 \| 个人 \| @alumni \| 已合并/);
+  assert.doesNotMatch(markdown,/待登记|权限待核对/);
+  const empty=policy.renderOverview({config,tree:{truncated:false,tree:[]},prs:[]});
+  assert.match(empty,/尚无正式作品或打开的提交 PR/);
+  assert.doesNotMatch(empty,/填写.*名单/);
 });

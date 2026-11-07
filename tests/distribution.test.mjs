@@ -19,7 +19,7 @@ test('Qoder project install keeps shared scripts and runs in a Unicode path, ref
     await fs.access(path.join(installed,'scripts/course.mjs'));
     await fs.access(path.join(installed,'references/transports.md'));
     const help=JSON.parse(execFileSync(process.execPath,[path.join(installed,'scripts/workshop.mjs'),'help'],{encoding:'utf8'}));
-    assert.equal(help.version,'2.0.0');
+    assert.equal(help.version,'2.1.0');
     const before=await fs.readFile(path.join(installed,'SKILL.md'));
     assert.throws(()=>execFileSync(process.execPath,[installer,'--ide','qoder','--workspace',workspace],{stdio:'pipe'}),/已安装/);
     assert.deepEqual(await fs.readFile(path.join(installed,'SKILL.md')),before);
@@ -48,6 +48,6 @@ with zipfile.ZipFile(archive) as z:
     z.extractall(dest)
 `,zip,path.join(root,'skills/aibt-workshop'),output]);
     const help=JSON.parse(execFileSync(process.execPath,[path.join(output,'aibt-workshop/scripts/workshop.mjs'),'help'],{encoding:'utf8'}));
-    assert.equal(help.version,'2.0.0');
+    assert.equal(help.version,'2.1.0');
   }finally{await fs.rm(output,{recursive:true,force:true});}
 });

@@ -62,7 +62,7 @@ function github(){
   return {api,store};
 }
 const context={login:'student',upstream:{id:123}};
-const config={version:2,lessons:[{id:'lesson-02',title:'练习二'}],groups:[{id:'group-03',members:['student','peer'],representatives:['student']},{id:'group-04',members:['student','peer'],representatives:['student']}]};
+const config={version:3,submissionMode:'self-reported',lessons:[{id:'lesson-02',title:'练习二'}]};
 const files=()=>[{path:'README.md',bytes:Buffer.from('你好，AIBT！')},{path:'image.png',bytes:Buffer.from([137,80,78,71,0,255,1,2])}].map(f=>({...f,sha:blobSha(f.bytes)}));
 const params=g=>({api:g.api,context,config,group:3,kind:'team',repo:'student/'+REPO_NAME,slug:'lesson-02',files:files()});
 
@@ -127,9 +127,9 @@ test('a bad remote blob hash fails without publishing a ref',async()=>{
   const g=github();const api=async(...args)=>args[0].endsWith('/git/blobs')?{sha:'wrong'}:g.api(...args);
   await assert.rejects(publish({...params(g),api}),/哈希不符/);assert.equal(g.store.prs.length,0);assert.equal(g.store.calls.some(c=>c.method==='PATCH'),false);
 });
-test('unregistered and unauthorized groups fail before creating remote state',async()=>{
-  for(const options of [{group:5},{group:undefined},{context:{...context,login:'another'}},{config:{...config,groups:[{id:'group-03',members:[],representatives:[]}]}}]){
-    const g=github();await assert.rejects(publish({...params(g),...options}),/组|代表|登记/);
+test('invalid self-reported details fail before creating remote state',async()=>{
+  for(const options of [{group:100},{group:undefined},{kind:undefined},{slug:'lesson-03'}]){
+    const g=github();await assert.rejects(publish({...params(g),...options}),/组|类型|练习/);
     assert.equal(g.store.calls.some(c=>c.method!=='GET'),false);
   }
 });
@@ -139,7 +139,7 @@ test('a submission requires README and rejects absolute or traversing source pat
     assert.equal(g.store.calls.some(c=>c.method!=='GET'),false);
   }
 });
-test('two authorized groups have separate branches and PRs',async()=>{
+test('two self-reported groups have separate branches and PRs',async()=>{
   const g=github();const a=await publish(params(g)),b=await publish({...params(g),group:4});
   assert.equal(a.branch,'aibt/student/lesson-02/group-03/team');assert.equal(b.branch,'aibt/student/lesson-02/group-04/team');
   assert.equal(g.store.prs.length,2);
@@ -152,7 +152,7 @@ test('a different representative cannot create a duplicate pending group PR',asy
 });
 test('simultaneous team representatives keep one open PR and never both report success',async()=>{
   const g=github();
-  const shared={...config,groups:[{id:'group-03',members:['student','peer'],representatives:['student','peer']}]};
+  const shared=config;
   let arrived=0,release;
   const ready=new Promise(resolve=>{release=resolve;});
   const apiFor=login=>async(...args)=>{
@@ -206,7 +206,7 @@ test('a teacher-marked maintenance PR is skipped when choosing a new formal subm
   const g=github();const before=await publish(params(g));g.store.prs[0].labels=[{name:'course-maintenance'}];
   const result=await publish(params(g));assert.notEqual(result.pr,before.pr);assert.match(result.branch,/team-r2$/);
 });
-test('submit checks the trusted roster before creating a fork',async()=>{
+test('submit checks trusted exercise configuration before creating a fork',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'aibt-roster-'));
   const calls=[];
   const api=async(endpoint,method='GET')=>{
@@ -218,7 +218,7 @@ test('submit checks the trusted roster before creating a fork',async()=>{
   };
   try{
     await fs.writeFile(path.join(root,'README.md'),'作品');
-    await assert.rejects(main(['submit','--lesson','2','--group','3','--kind','team','--source',root],api),/代表/);
+    await assert.rejects(main(['submit','--lesson','3','--group','8','--kind','team','--source',root],api),/练习/);
     assert.equal(calls.some(c=>c.method!=='GET'||c.endpoint.includes('/forks')),false);
   }finally{await fs.rm(root,{recursive:true,force:true});}
 });

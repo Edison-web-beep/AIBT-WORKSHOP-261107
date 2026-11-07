@@ -13,9 +13,9 @@
 
 GitHub CLI **不是 Skill 的必要条件**。使用 helper 时才需要 Node.js 20+ 和 gh。Skill 是操作流程；Connector／CLI 才是账号授权与上传通道，不能用 Skill 绕过登录。
 
-## 分组版 2.0.0
+## 分组版 2.1.0
 
-Qoder 与 WorkBuddy 使用同一个 Skill，Connector 路线也必须读取老师 main 的 course.json，核对练习、组号、个人/小组类型及对应角色账号，不能因没有 CLI 而省略分组验证。Qoder 项目安装和 WorkBuddy ZIP 均包含 scripts/workshop.mjs、scripts/course.mjs 与 references/transports.md；不引入 npm 依赖。
+Qoder 与 WorkBuddy 使用同一个 Skill，Connector 路线也必须读取老师 main 的 course.json，确认开放练习、自报组号（1–99）、个人/小组类型及实际登录账号。无需老师维护名单；不因未登记账号或新组别而拒绝。组别关系由老师审核 PR 确认。Qoder 项目安装和 WorkBuddy ZIP 均包含 scripts/workshop.mjs、scripts/course.mjs 与 references/transports.md；不引入 npm 依赖。
 
 维护测试覆盖带中文/空格路径的项目安装、拒绝覆盖、独立 ZIP 解压后运行 helper 和完整性校验。两款产品实际版本的 UI 载入、Connector 授权与课堂网络仍须按 [老师验收步骤](TEACHER.md) 现场验证。
 
