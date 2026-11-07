@@ -1,45 +1,47 @@
 # 选择 GitHub 连接方式
 
-## 连接器优先，但要查实际工具
+## 先查实际工具
 
-需要以下能力，不可仅凭「已连接 GitHub」判断：
+优先已有 Connector；实际工具和参数以宿主 schema 为准，不猜测工具名称。
 
-| 操作 | 常见工具名或等效能力 |
+| 能力 | 示例工具或等效 API |
 |---|---|
-| 确认本人身分、读课程 | get_me / get_user_login、get_repository / fetch |
-| 创建或确认 Fork | fork_repository，或学生在 GitHub 网页完成一次 Fork |
-| 读分支、创建分支 | get_branch / list_branches、create_branch |
-| 上传与更新文件 | push_files / create_or_update_file（确认格式）；或 Git blob/tree/commit/ref API |
-| PR 与重试 | list_pull_requests、create_pull_request、get_pull_request |
-| 验证内容 | get_file_contents 或 Git tree/blob SHA |
+| 本人身份、课程读取 | get_me / get_user_login、get_repository / fetch |
+| 老师登记 | 读取老师仓库 main 的 course.json，不能读取学生 Fork 代替 |
+| Fork | fork_repository，或学生网页完成一次 Fork |
+| 分支与写入 | branch/ref、blob（base64）、tree、commit |
+| PR | 分页读取 PR、创建、读取状态，测试须能创建 draft |
+| 验证 | 文件内容、Git tree/blob SHA、PR base/head/状态 |
 
-工具名称、参数与授权以当前宿主 schema 为准，不猜测不存在的工具。GitHub 官方 MCP 的文字工具 content 为原始文字；不要把图片的 base64 当文字文件提交。若有 create_blob(encoding=base64) 搭配 tree/commit/ref，可无损上传二进制。若只有文字工具，文字作品可走 connector，图片、PDF、演示文稿等改走 CLI；不宣称二进制测试通过。
+只有文字上传工具时，不把图片 base64 当文字文件提交。支持 create_blob(encoding=base64) 与 tree/commit/ref 的 Connector 才能无损提交二进制；否则改走 CLI。若只缺 Fork，可让学生在 https://github.com/f3484134/AIBT-WORKSHOP-261107/fork 创建一次，不必因此安装全部 CLI 工具。
 
-缺 Fork 工具但其余能力齐全时，让学生先在 https://github.com/f3484134/AIBT-WORKSHOP-261107/fork 按 Create fork。这只做一次；然后继续同一个 Skill。不要为缺一个工具强迫安装全部工具。
+## Connector 执行契约
 
-## 连接器执行流程
-
-1. 读实际登录账号和课程资料。若已有 `<login>/AIBT-WORKSHOP-261107`，确认它的 parent 是课程仓库；同名不相关 repo 不覆盖。
-2. 初始化／试交／正式提交时才创建 Fork。GET 404 与权限不足要区分；Fork 创建后最多检查 6 次，每次约 2 秒，逾时留待稍后重试。
-3. 选择分支规则与 helper 相同。先查对应 PR。打开的 PR 重用；关闭／已合并用下一个 `-rN`。未开 PR 的已有分支先检查差异只在本人课次内，不冒然覆盖。
-4. 新分支从老师 main 创建。若 fork API 不能使用最新 upstream SHA，不 reset Fork；提示在 GitHub Sync fork 更新，遇冲突停止处理。
-5. 用来源文件扫描结果上传，只改固定目录。Git tree 的 base_tree 必须是目标分支当前 tree，commit parent 必须是当前 head。更新 ref 前再读 head，拒绝并发覆盖，不 force。
-6. 测试内容：`connection-tests/<login>/connection.md`（不含本机绝对路径、Email、电脑信息）与 `pixel.png`。分支 `aibt/<login>/connection-test`，PR 标题 `[连接测试] <login> / connection-test`，draft=true。没能力创建草稿就使用 CLI，不能把普通 PR 说成草稿。
-7. 正式提交 PR 标题 `[作业] <login> / lesson-NN`，base=main，head=`<login>:<branch>`，draft=false。内容简述作品与课次，不贴本机路径或环境资料。已存在的 PR 不重复开。
-8. 验证文件内容／SHA 及 PR metadata。报告验证涵盖文字、图片、Fork、PR 哪些阶段。测试 PR 保留为草稿，不自动合并或删除。
+1. 确认实际账号和公开课程。已有 `<login>/AIBT-WORKSHOP-261107` 时核对 fork.parent 是课程；同名不相关仓库不覆盖。首次 Fork 后最多检查 6 次，每次约 2 秒。
+2. 正式提交先读取老师 main 的 course.json（version=2）：练习和组别均已登记，组别 representative 非 null 且等于实际登录账号。缺组号先询问，账号不符或未登记则停止，不自行改名单。连接测试跳过此登记步骤。
+3. 练习/组号归一为 lesson-NN、group-NN。远端固定 `submissions/lesson-NN/group-NN/`，分支 `aibt/<login>/lesson-NN/group-NN`。读取并分页查找 PR；同组同练习一个打开的 PR，关闭/合并后递增 -r2。不要复用旧版个人目录分支。
+4. 扫描源目录，保留相对路径和二进制；根部必须有 README.md。每组本练习最多 200 文件、单个 20 MiB、总计 50 MiB；排除隐藏设置、依赖包、凭证、密钥和符号链接。先报告文件数、略过项目及公开目的地。
+5. 新分支以老师最新 main 为基础。若 Fork 无法使用该 commit，提示在 GitHub Sync fork 更新，遇冲突停止；不 reset Fork。新 tree 基于当前 tree，commit parent 为当前 head。更新 ref 前再次读取 head，拒绝并发覆盖，force=false。
+6. 只新增/更新本次文件，保留远端旧文件。读取完整树检查范围、文件数/大小、README 与符号链接；被截断时停止。PR 差异只能在本组本练习目录，重命名来源也须同范围，不删除文件。
+7. 正式 PR：标题 `[练习NN][第NN组] <login>`，base=main，head=`<login>:<branch>`，draft=false。说明包含练习、组号、代表和作品介绍，不包含本机路径或环境资料。不要重复开 PR。
+8. 连接测试：生成 `connection-tests/<login>/connection.md` 与 pixel.png，分支 `aibt/<login>/connection-test`，关闭后用 -r2，标题 `[连接测试] <login> / connection-test`，draft=true。老师账号用自己仓库的测试分支，并报告学生 Fork 未验证。
+9. 读取远端文件 SHA 与 PR base/head/状态。测试保留草稿，不自动合并。仅只读诊断不建立 Fork、上传或发评论。
 
 ## CLI 备用
 
-连接器能力不足或无法读取本地文件时，用 `scripts/workshop.mjs`；只需 Node.js 20+、GitHub CLI，不需 Git。先检查是否已安装，只有缺少时才提供官方安装入口：
+Qoder 与 WorkBuddy 有本地执行能力时均可使用同一份 scripts/workshop.mjs。仅需 Node.js 20+、GitHub CLI，无 npm 依赖、无本地 Git 仓库要求。先检查已安装工具，只有缺少时才提供官方入口：
 
 - GitHub CLI：https://cli.github.com/
 - Node.js LTS：https://nodejs.org/
-- Windows 可使用官方 winget 软件包 `GitHub.cli` 和 `OpenJS.NodeJS.LTS`，由 IDE 协助安装；若宿主不允许执行安装，给学生一个明确点选步骤。
 
-登录由学生完成：`gh auth login --hostname github.com --web --git-protocol https`。在浏览器完成 device flow。不要请学生粘贴 Token、密码、device code 到公开 repo。`gh auth status` 只看是否登录，不印 Token。Connector 的登录与 gh 的登录彼此独立。
+Windows 可使用官方 winget 包 GitHub.cli 和 OpenJS.NodeJS.LTS；不能执行安装时给用户明确操作步骤。登录命令：
 
-Helper 通过 `gh api` 调用 GitHub API，因此能保留文字与二进制文件。正式提交不读用户的 Git 暂存区、不切换工作目录分支、不改 remote。故已有项目是否用 Git 管理不影响上传。
+```text
+gh auth login --hostname github.com --web --git-protocol https
+```
+
+由用户本人完成浏览器授权，不索取密码或 Token。Connector 与 CLI 登录独立，账号不同且尚未选定时先选择；用户已明确选定后继续使用该通道并读取确认实际账号，无需重复询问。不要把 device code、凭证写入公开仓库。
 
 ## 有限重试
 
-网络中断可能已成功写入；先读 Fork、分支、文件与 PR 再重试相同操作。不要无限回圈。401 登录、403 检查权限／频率、新 Fork 不在 connector 授权范围、404 确认名称与授权、422 检查已有 Fork／分支／PR 或上游 commit。中国境内可读 github.com 不保证 api.github.com 可连，首次测试需在实际上课的网络执行。不要绕过凭证错误或关闭安全检查。
+网络中断可能已写入，先查 Fork、分支、文件与 PR 再重试。401 检查登录；403 检查权限/频率或新 Fork 是否在授权范围；404 核对名称和权限；422 检查已有 Fork/分支/PR 或上游 commit。不要无限重试、绕过凭证错误或关闭安全检查。实际课堂网络需确认 api.github.com 可用。

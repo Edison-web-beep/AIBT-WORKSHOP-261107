@@ -1,21 +1,32 @@
 # 验证记录
 
-## 已完成
+## 分组版 2.0.0（2026-11-07）
 
-- 课程 Repo 确认为公开，默认分支为 `main`。
-- 已发布的文件包含 Skill、helper、学生安装指引、完整 Prompt 清单、老师测试流程、教材与作品目录范本、可下载 ZIP。
-- Skill Creator 的 `quick_validate.py` 格式验证通过。
-- Skill ZIP 完整性检查通过，下载目录附 SHA-256。
-- 项目安装器已在独立的本地测试目录试装 Qoder 路径成功；这只验证文件安装，未代表 Qoder UI 已载入。
-- `node --test tests/workshop.test.mjs`：**11 项全部通过**。涵盖文件筛选、疑似密钥阻挡、Unicode 路径、二进制保真、Fork 初始化、重试、重交、范围隔离、并发、老师模式、错误哈希停止及测试 PNG 的格式／校验码。
-- 使用当前已登录的 GitHub Connector，实际创建老师测试分支、上传文字与 PNG、创建 [草稿测试 PR #1](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/1)，读取文字与 PNG（base64）确认内容一致，并确认 PR 指向 `main` 且为 draft。
+维护分支已通过 Node.js 20 与当前 Node.js 的完整 `node --test`。测试涵盖：
 
-## 尚待在上课环境验证
+- 练习/组号归一、可信老师登记、未登记/非代表账号拒绝。
+- 练习与组别目录、不同组独立分支、二进制保真、重复提交复用、关闭后新版本、并发与错误哈希停止。
+- PR 作者、来源仓库、base/head、标题、范围、跨组重命名、删除、README、链接、文件大小及完整目录检查。
+- 连接测试保留草稿，包含文字和 PNG，关闭后可使用新版本分支，不依赖正式组别登记。
+- PR/总览分页、固定 main/base SHA、检查期间 head 变化停止、按练习与组别列出全部状态。
+- Qoder 中文/空格项目路径安装、完整 scripts/references、已有版本拒绝覆盖。
+- WorkBuddy ZIP 独立解压运行、逐文件字节一致、可重复打包和 SHA-256。
 
-- WorkBuddy、Qoder 或其他学生实际使用的版本能否识别／载入 Skill。
-- 各产品 Connector 是否提供 Fork、分支、该作品格式的上传与 PR 工具。
-- 学生账号的 Fork 与跨仓库 PR；老师无法 Fork 自己，因此老师分支测试不涵盖这一段。
-- CLI helper 的实际 gh 登录及真实 GitHub API 连接；本地行为测试使用模拟 API，真实老师上传测试走 Connector。
-- 教室网络下的 GitHub 注册、授权及 `api.github.com` 连接。
+新版 Skill 已通过独立文档情景验证：明确组号、缺组号、待登记代表、WorkBuddy 图片上传能力、无登记时连接测试，以及已选定 CLI 账号六个场景均符合规则。
 
-请依 [TEACHER.md](TEACHER.md) 完成一轮真实学生角色测试，再将相同步骤发给全班。首次测试 Prompt 会生成小型测试资料，不需先准备正式作业。
+新增 GitHub Actions 包含 Linux/Windows Node 20 测试、可信代码的分组检查和课堂总览。老师仓库中的实际自动检查与总览需要本次 PR 合并后启用；本地测试不能证明尚未运行的远端工作流已成功。
+
+## 已有真实连接测试
+
+- 老师 Connector：[草稿 PR #1](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/1)，文字、PNG 与 PR 已读回验证；不涵盖学生 Fork。
+- 学生 CLI：[草稿 PR #2](https://github.com/f3484134/AIBT-WORKSHOP-261107/pull/2)，账号 yuhsiuli，实际 Fork、文字/PNG、跨仓库草稿 PR 均已读回验证。
+
+这些记录验证已有连接通道，不等于新版正式分组作业已在所有产品完成试交。测试 PR 保留草稿，不自动合并或删除。
+
+## 仍需课堂环境验收
+
+- 老师登记真实各组代表，然后使用新版 Skill 提交一次实际分组作品，核对远端目录、二进制及 Checks。
+- 在实际 Qoder/WorkBuddy 版本中验证 Skill UI 载入、Connector 可用能力和本人账号授权。
+- 在实际教室网络测试 GitHub 注册及 api.github.com 连接。
+
+按 [老师管理与验收](TEACHER.md) 完成一轮正式提交、修改重交和合并后补交，再向全班分发相同版本。

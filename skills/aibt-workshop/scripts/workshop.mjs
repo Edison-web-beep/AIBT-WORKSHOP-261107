@@ -5,8 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {fileURLToPath} from 'node:url';
-import {COURSE,REPO_NAME,lessonId,groupId,normalizeLogin,submissionTarget,readCourseConfig,listPullRequests,matchingGroupPulls,MAX_FILE,MAX_TOTAL,MAX_FILES,SKIP_DIRS,EXTENSIONS,SECRET_NAME,SECRET_CONTENT,validateWorkTree} from './course.mjs';
+import {COURSE,REPO_NAME,lessonId,groupId,normalizeLogin,submissionTarget,readCourseConfig,listPullRequests,matchingGroupPulls,MAX_FILE,MAX_TOTAL,MAX_FILES,SKIP_DIRS,EXTENSIONS,SECRET_NAME,SECRET_CONTENT,validateWorkTree,isMain} from './course.mjs';
 export * from './course.mjs';
 
 export const blobSha=b=>createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');
@@ -204,6 +203,6 @@ export async function main(argv=process.argv.slice(2),api=ghApi){
   const result=await publish({api,context,repo,slug,group,config,files:plan.files,summary:opts.summary??''});
   return {...result,skipped:plan.skipped,note:'已提交 PR；老师合并后才会出现在课程 main。远端旧文件不会自动删除。'};
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+if(isMain(import.meta.url)){
   main().then(result=>console.log(JSON.stringify(result,null,2))).catch(error=>{console.error(JSON.stringify({ok:false,message:error.message}));process.exitCode=1;});
 }

@@ -1,9 +1,9 @@
 # 课程教材
 
-老师将教材放到 `lesson-01/`、`lesson-02/` 等文件夹，后续内容按课堂安排补充。
+本课程有四个练习，对应 lesson-01 至 lesson-04，名称及登记以根目录 [course.json](../course.json) 为准。老师按课堂安排补充教材。
 
-- [第 0 步：准备与连接测试](lesson-00-setup/README.md)
-- [练习三：访谈笔记分析与材料下载](lesson-03/README.md)
+- [准备与连接测试](lesson-00-setup/README.md)
+- [练习三：访谈笔记分析与材料](lesson-03/README.md)
 - [教材格式范本](lesson-template/README.md)
 
-学生提交目录位于 `submissions/<GitHub账号>/lesson-NN/`，由 Skill 创建。
+学生作品归档到 `submissions/lesson-NN/group-NN/`，由各组登记代表使用 Skill 自动提交。

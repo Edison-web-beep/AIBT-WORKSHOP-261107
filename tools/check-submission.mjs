@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-import {fileURLToPath} from 'node:url';
-import path from 'node:path';
 import {ghApi} from '../skills/aibt-workshop/scripts/workshop.mjs';
-import {COURSE,readCourseConfig,listPullRequests,validateSubmission} from '../skills/aibt-workshop/scripts/course.mjs';
+import {COURSE,readCourseConfig,listPullRequests,validateSubmission,isMain} from '../skills/aibt-workshop/scripts/course.mjs';
 
 export async function checkPullRequest(api,number){
   if(!Number.isSafeInteger(number)||number<1)throw new Error('请指定有效的 PR 编号。');
@@ -22,7 +20,7 @@ export async function checkPullRequest(api,number){
   if(latest.head.sha!==pr.head.sha||latest.base.sha!==pr.base.sha)throw new Error('PR 在检查期间发生变化，请重新运行检查。');
   return result;
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+if(isMain(import.meta.url)){
   const args=process.argv.slice(2);
   if(args.length!==2||args[0]!=='--pr')throw new Error('用法：node tools/check-submission.mjs --pr <编号>');
   checkPullRequest(ghApi,Number(args[1])).then(result=>console.log(JSON.stringify(result,null,2))).catch(error=>{console.error(error.message);process.exitCode=1;});

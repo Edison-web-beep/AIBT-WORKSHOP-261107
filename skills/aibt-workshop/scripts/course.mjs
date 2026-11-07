@@ -1,4 +1,9 @@
 // 与 helper 一起分发；仅使用 Node.js 标准库。
+import {realpathSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+export function isMain(moduleURL){
+  try{return realpathSync(process.argv[1])===realpathSync(fileURLToPath(moduleURL));}catch{return false;}
+}
 export const COURSE='f3484134/AIBT-WORKSHOP-261107';
 export const REPO_NAME=COURSE.split('/')[1];
 export const MAX_FILE=20*1024*1024,MAX_TOTAL=50*1024*1024,MAX_FILES=200;
